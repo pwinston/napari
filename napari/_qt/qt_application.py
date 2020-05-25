@@ -6,31 +6,29 @@ Our QtApplication is either:
 
 PerfmonApplication defined below adds timing of every Qt Event.
 """
-import os
-
 from qtpy.QtWidgets import QApplication
 
-from ..utils.perf import perf_timer
+from ..utils import perf
 
 
-def _get_timer_name(event: str, receiver: str) -> str:
+def _get_timer_name(receiver, event) -> str:
     """Return a name for this event.
 
     Parameters
     ----------
-    event : str
-        The event name.
-    receiver : str
+    receiver : QWidget
         The receiver of the event.
+    event : QEvent
+        The event name.
 
     Returns
     -------
-    timer name : str
+    timer_name : str
 
     Notes
     -----
-    If there is no object we return just <event_name>.
-    If there is an object we do <event_name>:<object_name>.
+    If no object we return <event_name>.
+    If there's an object we return <event_name>:<object_name>.
 
     This our own made up format we can revise as needed.
     """
@@ -48,7 +46,7 @@ def _get_timer_name(event: str, receiver: str) -> str:
     if object_name:
         return f"{event_str}:{object_name}"
 
-    # Many events have no object.
+    # Many events have no object, only an event.
     return event_str
 
 
@@ -72,18 +70,14 @@ class TimedApplication(QApplication):
 
     def notify(self, receiver, event):
         """Time events while we handle them."""
-        print("RECEIVER", type(receiver))
-        print("EVENT", type(event))
         timer_name = _get_timer_name(receiver, event)
 
         # Time the event while we handle it.
-        with perf_timer(timer_name, "qt_event"):
+        with perf.perf_timer(timer_name, "qt_event"):
             return QApplication.notify(self, receiver, event)
 
 
-USE_PERFMON = os.getenv("NAPARI_PERFMON", "0") != "0"
-
-if USE_PERFMON:
+if perf.USE_PERFMON:
     # Use our performance monitoring version.
     QtApplication = TimedApplication
 else:
