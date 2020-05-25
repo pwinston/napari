@@ -16,7 +16,7 @@ from qtpy.QtWidgets import (
     QWidget,
 )
 
-from ..utils.perf_timers import TIMERS
+from ..utils import perf
 
 
 class TextLog(QTextEdit):
@@ -130,7 +130,7 @@ class QtPerformance(QWidget):
         # dictionary. Updating widgets can create immediate Qt Events which
         # would modify the TIMERS out from under us! So we only read here and we
         # update the GUI later.
-        for name, timer in TIMERS.timers.items():
+        for name, timer in perf.get_timers().items():
 
             # The Qt Event "UpdateRequest" is the main "draw" event, so
             # that's what we use for our progress bar.
@@ -162,4 +162,4 @@ class QtPerformance(QWidget):
 
         # Clear all the timers since we've displayed them. They will immediately
         # start accumulating numbers for the text time we run.
-        TIMERS.clear()
+        perf.clear_timers()
