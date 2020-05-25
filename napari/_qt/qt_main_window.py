@@ -2,7 +2,6 @@
 Custom Qt widgets that serve as native objects that the public-facing elements
 wrap.
 """
-import os
 import time
 
 # set vispy to use same backend as qtpy
@@ -15,6 +14,7 @@ from .qt_plugin_sorter import QtPluginSorter
 from .qt_dict_table import QtDictTable
 from .qt_viewer_dock_widget import QtViewerDockWidget
 from ..resources import get_stylesheet
+from ..utils import perf
 
 # these "# noqa" comments are here to skip flake8 linting (E402),
 # these module-level imports have to come after `app.use_app(API)`
@@ -89,7 +89,7 @@ class Window:
         self._add_plugins_menu()
         self._add_help_menu()
 
-        if os.getenv("NAPARI_PERFMON", "0") != "0":
+        if perf.USE_PERFMON:
             self._add_perf_menu()
 
         self._status_bar.showMessage('Ready')
@@ -358,28 +358,15 @@ class Window:
         )
         self.help_menu.addAction(about_key_bindings)
 
-    def _record_trace_dialog(self):
-        """Record performance trace file"""
-        filename, _ = QFileDialog.getSaveFileName(
-            parent=self.qt_viewer,
-            caption='Record performance trace file',
-            directory=self.qt_viewer._last_visited_dir,  # home dir by default
-            filter="Trace files (*.json)",
-        )
-        if (filename != '') and (filename is not None):
-            if not filename.endswith('.json'):
-                filename = filename + '.json'
-            self.screenshot(path=filename)
-
-    def _add_debug_menu(self):
+    def _add_perf_menu(self):
         """Add the optional Performance menu."""
         self.perf_menu = self.main_menu.addMenu('&Performance')
 
         record = QAction('Record Trace File...', self._qt_window)
         record.setShortcut('Alt+T')
         record.setStatusTip('Record performance trace file.')
-        record.triggered.connect(self.qt_viewer._screenshot_dialog)
-        self.file_menu.addAction(record)
+        record.triggered.connect(self.qt_viewer._record_trace_dialog)
+        self.perf_menu.addAction(record)
 
     def add_dock_widget(
         self,
