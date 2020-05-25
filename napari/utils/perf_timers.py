@@ -1,156 +1,116 @@
-"""Timers for monitoring performance.
+"""PerfTimers class for monitoring performance.
 """
-from contextlib import contextmanager
 import os
-import time
-import sys
+from typing import Optional
 
+from .perf_utils import TimingEvent
+from .simple_stat import SimpleStat
 from .tracing import ChromeTracingFile
 
-# Custom perf_counter_ns() for pre Python 3.7.
-if sys.version_info[:2] >= (3, 7):
-    perf_counter_ns = time.perf_counter_ns
-else:
-
-    def perf_counter_ns():
-        return int(time.perf_counter() * 1e9)
-
-
-@contextmanager
-def perf_timer(timer_name):
-    """Context manager to time a block of code.
-
-    Example
-    -------
-    with perf_timer("calculate"):
-        self.calculate()
-    """
-    start_ns = perf_counter_ns()
-    yield
-    end_ns = perf_counter_ns()
-    TIMERS.record(timer_name, start_ns, end_ns)
-
-
-class PerfTimer:
-    """One performance timer.
-
-    Each PerfTimer stores the min/max/average for one timer.
-
-    We want to track the min/max/average because the UI might be updating at a
-    much slower rate than the timers. And displaying the min/max/average gives a
-    better picture of what's happening than just showing the last value.
-
-    For example we might be drawing at 60Hz but the QtPerformance widget
-    is only updating at 1Hz, so QtPerformance is conveying 60 frames with
-    of timing data.
-    """
-
-    def __init__(self, value):
-        self.min = value
-        self.max = value
-        self.sum = value
-        self.count = 1
-
-    def add(self, value):
-        self.sum += value
-        self.count += 1
-        self.max = max(self.max, value)
-        self.min = min(self.min, value)
-
-    @property
-    def average(self):
-        if self.count > 0:
-            return self.sum / self.count
-        return 0
+# For now all performance timing is 100% disabled unless the
+# environment variable is set. Long term we will probably
+# leave some timing on at all times.
+USE_PERFMON = os.getenv("NAPARI_PERFMON", "0") != "0"
 
 
 class PerfTimers:
-    """Performance Timers.
+    """Timers for performance monitoring.
 
-    Performance Timers are for recording the duration of:
-    1) Qt Event handling (today)
-    2) Key blocks of code (future);
-    3) IO operations (future)
+    For each TimingEvent recorded we do two things:
+    1) Update our self.timers dictionary (always).
+    2) Write to a trace file (optional).
 
-    Environment Variables
-    ---------------------
+    Anyone can record a timing event, but these are 3 common ways:
+    1) Our custom QtApplication times Qt Events.
+    2) Our perf_timer context object times blocks of code.
+    3) Our perf_func decorator can time functions.
 
-    NAPARI_PERFMON_TRACE_PATH
+    The QtPerformance Widget goes through our self.timers looking for long events
+    and prints them to a log window. Then it clears the timers.
 
-    Write all timers to this path in chrome://tracing format.
+    Attributes
+    ----------
+    timers : dict
+        Maps a timer name to a SimpleStat object.
+    trace_file : ChromeTracingfile, optional
+        The tracing file we are writing to if any.
 
-    Nesting:
-    --------
-    Chrome tracing correctly figures out nesting based on the start/end
-    times of each timer. In the chrome://tracing viewer you can see the
-    nesting exactly as it happened.
+    Notes
+    -----
+    Chrome deduces nesting based on the start and end times of each timer. The
+    chrome://tracing GUI shows the nesting as stacks of colored rectangles.
 
-    Our own self.timers dictionary does not understand nesting yet.
+    However our self.timers dictionary and thus our QtPerformance window do not
+    currently understand nesting. So if they say two timers each took 1ms, you
+    can't tell if they overlapped or not.
 
-    If two timers took 1ms but they overlapped with different names:
-    <------RequestUpdate------>
-    <------------Paint-------->
-
-    Then we'll see that 2 timers that each took 1ms, even though it was the
-    same 1ms. If both timers have the same name:
-
-    <----------Resize--------->
-    <----------Resize--------->
-
-    Then we'll show the Resize event was called twice for 1ms each.
-
-    Even though this sounds broken, for the purpose of just identifying long
-    running events it still works well. But full support for nesting is something
-    we could add.
+    Despites this limitation when the QtPerformance widget report slow timers it
+    still gives you a good idea. And then you can use chrome://tracing GUI to
+    see the full story.
     """
 
     def __init__(self):
-        """Create PerfTimers, optionally start a trace file.
+        """Create PerfTimers.
         """
-        # Key is (event_name, object_name).
+        # Maps a timer name to one SimleStat object.
         self.timers = {}
-        self.trace_file = self._create_trace_file()
 
-        # So we can start the times at zero.
-        self.zero_ns = perf_counter_ns()
+        # Menu item "Debug -> Record Trace File..." starts a trace.
+        self.trace_file = None
 
-    def _create_trace_file(self) -> ChromeTracingFile:
-        """Return ChromeTracingFile or None."
+    def record_trace_file(
+        self, path: str, duration_seconds: Optional[int] = None
+    ) -> None:
+        """Record a trace file to disk.
+
+        Parameters
+        ----------
+        path : str
+            Write the trace to this path.
+        duration_seconds: int, optional
+            Record for this many seconds then stop.
         """
-        path = os.getenv("NAPARI_PERFMON_TRACE_PATH")
-        if not path:
-            return None
-        return ChromeTracingFile(path)
+        self.trace_file = ChromeTracingFile(path, duration_seconds)
 
-    def record(self, name, start_ns, end_ns):
-        """Record the span of one timer.
+    def add_event(self, event: TimingEvent):
+        """Add one timing event.
+
+        Parameters
+        ----------
+        event : TimingEvent
+            Add this event.
         """
-        duration_ns = end_ns - start_ns
+        # Write if actively tracing.
+        if self.trace_file is not None:
+            self.trace_file.write_event(event)
 
-        # Make the times zero based.
-        start_ns = start_ns - self.zero_ns
-        end_ns = end_ns - self.zero_ns
+            if self.trace_file.done:
+                self.trace_file = None
 
-        # Chrome tracing wants micro-seconds.
-        start_us = start_ns / 1000
-        duration_us = duration_ns / 1000
-        if self.trace_file:
-            self.trace_file.write_event(name, start_us, duration_us)
-
-        # Our own timers are using milliseconds, for now.
-        duration_ms = duration_ns / 1e6
+        # Update self.timers (in milliseconds).
+        name = event.name
+        duration_ms = event.duration_ms
         if name in self.timers:
             self.timers[name].add(duration_ms)
         else:
-            self.timers[name] = PerfTimer(duration_ms)
+            self.timers[name] = SimpleStat(duration_ms)
 
     def clear(self):
         """Clear all timers.
-
-        Once the QtPerformance widget shows the timers we clear them.
         """
+        # After the GUI displays timing information it can clear the timers
+        # so that we start accumulating fresh information.
         self.timers.clear()
 
 
-# Only one instance today.
-TIMERS = PerfTimers()
+if USE_PERFMON:
+    # One global instance so far.
+    TIMERS = PerfTimers()
+
+    def add_event(event):
+        TIMERS.add_event(event)
+
+
+else:
+    # Nothing should be using the class at all.
+    del PerfTimers

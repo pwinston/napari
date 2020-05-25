@@ -2,6 +2,7 @@
 Custom Qt widgets that serve as native objects that the public-facing elements
 wrap.
 """
+import os
 import time
 
 # set vispy to use same backend as qtpy
@@ -87,6 +88,9 @@ class Window:
         self._add_window_menu()
         self._add_plugins_menu()
         self._add_help_menu()
+
+        if os.getenv("NAPARI_PERFMON", "0") != "0":
+            self._add_perf_menu()
 
         self._status_bar.showMessage('Ready')
         self._help = QLabel('')
@@ -353,6 +357,29 @@ class Window:
             self.qt_viewer.show_key_bindings_dialog
         )
         self.help_menu.addAction(about_key_bindings)
+
+    def _record_trace_dialog(self):
+        """Record performance trace file"""
+        filename, _ = QFileDialog.getSaveFileName(
+            parent=self.qt_viewer,
+            caption='Record performance trace file',
+            directory=self.qt_viewer._last_visited_dir,  # home dir by default
+            filter="Trace files (*.json)",
+        )
+        if (filename != '') and (filename is not None):
+            if not filename.endswith('.json'):
+                filename = filename + '.json'
+            self.screenshot(path=filename)
+
+    def _add_debug_menu(self):
+        """Add the optional Performance menu."""
+        self.perf_menu = self.main_menu.addMenu('&Performance')
+
+        record = QAction('Record Trace File...', self._qt_window)
+        record.setShortcut('Alt+T')
+        record.setStatusTip('Record performance trace file.')
+        record.triggered.connect(self.qt_viewer._screenshot_dialog)
+        self.file_menu.addAction(record)
 
     def add_dock_widget(
         self,
