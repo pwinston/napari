@@ -26,7 +26,6 @@ from ..utils.interactions import (
     mouse_release_callbacks,
 )
 from ..utils.key_bindings import components_to_key_combo
-from ..utils import perf
 
 from .utils import QImg2array, square_pixmap
 from .qt_controls import QtControls
@@ -375,19 +374,6 @@ class QtViewer(QSplitter):
             if not filename.endswith(image_extensions):
                 filename = filename + '.png'
             self.screenshot(path=filename)
-
-    def _record_trace_dialog(self):
-        """Record performance trace file."""
-        filename, _ = QFileDialog.getSaveFileName(
-            parent=self,
-            caption='Record performance trace file',
-            directory=self._last_visited_dir,  # home dir by default
-            filter="Trace files (*.json)",
-        )
-        if (filename != '') and (filename is not None):
-            if not filename.endswith('.json'):
-                filename += '.json'
-            perf.record_trace_file(filename)
 
     def _open_files_dialog(self):
         """Add files from the menubar."""

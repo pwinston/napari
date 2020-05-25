@@ -365,8 +365,21 @@ class Window:
         record = QAction('Record Trace File...', self._qt_window)
         record.setShortcut('Alt+T')
         record.setStatusTip('Record performance trace file.')
-        record.triggered.connect(self.qt_viewer._record_trace_dialog)
+        record.triggered.connect(self._record_trace_dialog)
         self.perf_menu.addAction(record)
+
+    def _record_trace_dialog(self):
+        """Record performance trace file."""
+        filename, _ = QFileDialog.getSaveFileName(
+            parent=self.qt_viewer,
+            caption='Record performance trace file',
+            directory=self.qt_viewer._last_visited_dir,  # home dir by default
+            filter="Trace files (*.json)",
+        )
+        if (filename != '') and (filename is not None):
+            if not filename.endswith('.json'):
+                filename += '.json'
+            perf.record_trace_file(filename)
 
     def add_dock_widget(
         self,
