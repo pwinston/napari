@@ -1,8 +1,8 @@
-"""SimpleStat class.
+"""Stat class.
 """
 
 
-class SimpleStat:
+class Stat:
     """Keep min/max/average on an integer value.
 
     Attributes
@@ -18,7 +18,7 @@ class SimpleStat:
     """
 
     def __init__(self, value: int):
-        """Create SimpleStat with an initial value.
+        """Create Stat with an initial value.
 
         Parameters
         ----------
@@ -45,7 +45,12 @@ class SimpleStat:
 
     @property
     def average(self) -> int:
-        """Average value."""
+        """Average value.
+
+        Returns
+        -------
+        average value : int.
+        """
         if self.count > 0:
             return self.sum / self.count
-        raise ValueError("no values")
+        raise ValueError("no values")  # impossible for us

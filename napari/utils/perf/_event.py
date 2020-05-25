@@ -19,7 +19,7 @@ class PerfEvent:
     Notes
     -----
     The times are from perf_counter_ns() and do not indicate time of day,
-    the origin is arbitrary. But subtracting two is valid.
+    the origin is arbitrary. But subtracting two counters is valid.
     """
 
     def __init__(self, category: str, name: str, start_ns: int, end_ns: int):

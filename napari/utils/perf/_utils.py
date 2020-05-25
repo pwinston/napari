@@ -1,22 +1,16 @@
 """Utilities to support performance monitoring:
 
-The perf_timer context manager to time blocks of code.
-The perf_func decorator to time functions.
-Our perf_counter_ns() function.
+1) context manager: perf_timer times a block of code.
+2) decorator: perf_func times a function.
 """
 import contextlib
 import functools
-import os
-import sys
-import time
 from typing import Optional
 
-from .perf_timers import add_event
-from .perf_event import PerfEvent
-
-
-PYTHON_3_7 = sys.version_info[:2] >= (3, 7)
-USE_PERFMON = os.getenv("NAPARI_PERFMON", "0") != "0"
+from ._compat import perf_counter_ns
+from ._config import USE_PERFMON, PYTHON_3_7
+from ._event import PerfEvent
+from ._timers import GLOBAL_TIMERS
 
 
 if USE_PERFMON:
@@ -39,7 +33,10 @@ if USE_PERFMON:
         yield
         end_ns = perf_counter_ns()
         event = PerfEvent(category, name, start_ns, end_ns)
-        add_event(event)
+
+        # It's okay to call this directly since we are guarded by the env var
+        # we don't need to go through the top-level add_event().
+        GLOBAL_TIMERS.add_event(event)
 
     def perf_func(name):
         """Decorator to time a function.
@@ -61,7 +58,11 @@ if USE_PERFMON:
 
 
 else:
-    # Timing is disabled so null versions of both.
+    # Timing is disabled so we want null versions of both that have
+    # essentially zero runtime overhead.
+    def decorator(func):
+        return func
+
     if PYTHON_3_7:
         perf_timer = contextlib.nullcontext()
     else:
@@ -69,16 +70,3 @@ else:
         @contextlib.contextmanager
         def perf_timer(name: str):
             yield
-
-    def decorator(func):
-        return func
-
-
-if PYTHON_3_7:
-    # Use the real perf_counter_ns
-    perf_counter_ns = time.perf_counter_ns
-else:
-
-    def perf_counter_ns():
-        """Fake version for pre Python 3.7."""
-        return int(time.perf_counter() * 1e9)

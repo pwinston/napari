@@ -10,7 +10,7 @@ import os
 
 from qtpy.QtWidgets import QApplication
 
-from ..utils.perf_utils import perf_timer
+from ..utils.perf import perf_timer
 
 
 def _get_timer_name(event: str, receiver: str) -> str:
@@ -42,7 +42,7 @@ def _get_timer_name(event: str, receiver: str) -> str:
         object_name = receiver.objectName()
     except AttributeError:
         # During shutdown the call to receiver.objectName() can fail with
-        # "missing objectName attribute". Ingore and assume no object name.
+        # "missing objectName attribute". Ignore and assume no object name.
         object_name = None
 
     if object_name:
@@ -52,26 +52,28 @@ def _get_timer_name(event: str, receiver: str) -> str:
     return event_str
 
 
-class PerfmonApplication(QApplication):
+class TimedApplication(QApplication):
     """Extend QApplication to time Qt Events.
 
-    Performance monitoring is a WIP. There are 3 main parts to performance
-    monitoring today:
-    1) PerfmonApplication: times events, sends times to PerfTimers.
+    There are 3 main parts to performance monitoring today:
+    1) PerfmonApplication: times Qt Events.
     2) PerfTimers: stores timing data, optionally writes to chrome://tracing.
-    3) QtPerformance: dockable widget which displays some PerfTime data.
+    3) QtPerformance: dockable widget which displays perf information.
 
-    Nesting: Note that Qt Event handling is nested. A call to notify() can
-    trigger other calls to notify() prior to the first one finishing, and so one
-    several levels deep. This hierarchy of timers is visible in
-    chrome://tracing.
+    Notes
+    -----
+    Qt Event handling is nested. A call to notify() can trigger other calls to
+    notify() prior to the first one finishing, even several levels deep. The
+    hierarchy of timers is displayed correctly in the chrome://tracing GUI.
+
+    Seeing the structure of the event handling hierarchy can be very informative
+    even apart from the timing part.
     """
 
     def notify(self, receiver, event):
         """Time events while we handle them."""
         print("RECEIVER", type(receiver))
         print("EVENT", type(event))
-        # Must access event/receiver before calling notify().
         timer_name = _get_timer_name(receiver, event)
 
         # Time the event while we handle it.
@@ -83,7 +85,7 @@ USE_PERFMON = os.getenv("NAPARI_PERFMON", "0") != "0"
 
 if USE_PERFMON:
     # Use our performance monitoring version.
-    QtApplication = PerfmonApplication
+    QtApplication = TimedApplication
 else:
-    # Use the normal stock QApplication
+    # Use the normal stock QApplication.
     QtApplication = QApplication
