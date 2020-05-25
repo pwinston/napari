@@ -11,6 +11,7 @@ from .qt_viewer import QtViewer
 from .qt_about import QtAbout
 from .qt_plugin_report import QtPluginErrReporter
 from .qt_plugin_sorter import QtPluginSorter
+from .qt_debug_menu import DebugMenu
 from .qt_dict_table import QtDictTable
 from .qt_viewer_dock_widget import QtViewerDockWidget
 from ..resources import get_stylesheet
@@ -89,8 +90,7 @@ class Window:
         self._add_plugins_menu()
         self._add_help_menu()
 
-        if perf.USE_PERFMON:
-            self._add_perf_menu()
+        self._debug_menu = DebugMenu(self) if perf.USE_PERFMON else None
 
         self._status_bar.showMessage('Ready')
         self._help = QLabel('')
@@ -105,8 +105,7 @@ class Window:
         self._add_viewer_dock_widget(self.qt_viewer.dockLayerControls)
         self._add_viewer_dock_widget(self.qt_viewer.dockLayerList)
 
-        # Performance widget is optional for now.
-        if self.qt_viewer.dockPerformance is not None:
+        if perf.USE_PERFMON:
             self._add_viewer_dock_widget(self.qt_viewer.dockPerformance)
 
         self.qt_viewer.viewer.events.status.connect(self._status_changed)
@@ -357,29 +356,6 @@ class Window:
             self.qt_viewer.show_key_bindings_dialog
         )
         self.help_menu.addAction(about_key_bindings)
-
-    def _add_perf_menu(self):
-        """Add the optional Performance menu."""
-        self.perf_menu = self.main_menu.addMenu('&Performance')
-
-        record = QAction('Record Trace File...', self._qt_window)
-        record.setShortcut('Alt+T')
-        record.setStatusTip('Record performance trace file.')
-        record.triggered.connect(self._record_trace_dialog)
-        self.perf_menu.addAction(record)
-
-    def _record_trace_dialog(self):
-        """Record performance trace file."""
-        filename, _ = QFileDialog.getSaveFileName(
-            parent=self.qt_viewer,
-            caption='Record performance trace file',
-            directory=self.qt_viewer._last_visited_dir,  # home dir by default
-            filter="Trace files (*.json)",
-        )
-        if (filename != '') and (filename is not None):
-            if not filename.endswith('.json'):
-                filename += '.json'
-            perf.record_trace_file(filename)
 
     def add_dock_widget(
         self,
