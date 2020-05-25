@@ -30,11 +30,11 @@ class PerfEvent:
 
     @property
     def start_us(self):
-        return self.start_ns() / 1e3
+        return self.start_ns / 1e3
 
     @property
     def start_ms(self):
-        return self.start_ns() / 1e6
+        return self.start_ns / 1e6
 
     @property
     def duration_ns(self):
@@ -42,8 +42,8 @@ class PerfEvent:
 
     @property
     def duration_us(self):
-        return self.duration_ns() / 1e3
+        return self.duration_ns / 1e3
 
     @property
     def duration_ms(self):
-        return self.duration_ns() / 1e6
+        return self.duration_ns / 1e6

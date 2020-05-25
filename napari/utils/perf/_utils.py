@@ -10,7 +10,7 @@ from typing import Optional
 from ._compat import perf_counter_ns
 from ._config import USE_PERFMON, PYTHON_3_7
 from ._event import PerfEvent
-from ._timers import GLOBAL_TIMERS
+from ._timers import add_event
 
 
 if USE_PERFMON:
@@ -33,10 +33,7 @@ if USE_PERFMON:
         yield
         end_ns = perf_counter_ns()
         event = PerfEvent(category, name, start_ns, end_ns)
-
-        # It's okay to call this directly since we are guarded by the env var
-        # we don't need to go through the top-level add_event().
-        GLOBAL_TIMERS.add_event(event)
+        add_event(event)
 
     def perf_func(name):
         """Decorator to time a function.
@@ -60,8 +57,9 @@ if USE_PERFMON:
 else:
     # Timing is disabled so we want null versions of both that have
     # essentially zero runtime overhead.
-    def decorator(func):
-        return func
+    def perf_func(name):
+        def decorator(func):
+            return func
 
     if PYTHON_3_7:
         perf_timer = contextlib.nullcontext()

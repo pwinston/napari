@@ -88,3 +88,6 @@ class PerfTraceFile:
         # way to write JSON that can be cut off, but chrome://tracing probably
         # predates that convention.
         self.outf.write(f"{json_str},\n")
+
+        # Write as we go in case we exit without closing.
+        self.outf.flush()

@@ -102,28 +102,31 @@ if USE_PERFMON:
         """
         GLOBAL_TIMERS.add_event(event)
 
+    def get_timers():
+        """Return internal timers dict we can iterate over.
+        """
+        return GLOBAL_TIMERS.timers
+
+    def clear_timers():
+        """Clear all timing data.
+        """
+        GLOBAL_TIMERS.clear()
+
+    def record_trace_file(path):
+        """Start recording a trace file.
+        """
+        GLOBAL_TIMERS.record_trace_file(path)
+
 
 else:
 
-    def add_event(event: PerfEvent):
-        """Disabled routine.
+    # We want to be 100% sure no one is using perf timers when the environment
+    # variable is not set, so we have disabled versions of these functions.
 
-        Parameters
-        ----------
-        event: PerfEvent
-            Ignored.
-
-        Raises
-        ------
-        NotImplementedError
-            Always raises this!
-        """
-        # No one should be calling this if the env var is not set.
-        # All 3 of these should be disabled:
-        #
-        # 1) Qt Events timers.
-        # 2) Our perf_timer context object.
-        # 3) Our perf_func decorator.
-        #
-        # Anyone else should disable themselves based on the env var.
+    def disabled(**args):
         raise NotImplementedError("Timers are not enabled")
+
+    add_event = disabled
+    get_timers = disabled
+    clear_timers = disabled
+    record_trace_file = disabled
