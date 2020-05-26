@@ -1,10 +1,7 @@
-"""Defines our QtApplication.
+"""Defines QApplicationWithTiming for perf mon.
 
-Our QtApplication is either:
-1) QApplication in the normal case.
-2) PerfmonApplication if NAPARI_PERFMON environment variable is set.
-
-PerfmonApplication defined below adds timing of every Qt Event.
+In event_loop.py we optionally use this class instead of the normal
+QApplication. This class times every Qt Event.
 """
 from qtpy.QtWidgets import QApplication
 
@@ -50,7 +47,7 @@ def _get_timer_name(receiver, event) -> str:
     return event_str
 
 
-class TimedApplication(QApplication):
+class QApplicationWithTiming(QApplication):
     """Extend QApplication to time Qt Events.
 
     There are 3 main parts to performance monitoring today:
@@ -75,11 +72,3 @@ class TimedApplication(QApplication):
         # Time the event while we handle it.
         with perf.perf_timer(timer_name, "qt_event"):
             return QApplication.notify(self, receiver, event)
-
-
-if perf.USE_PERFMON:
-    # Use our performance monitoring version.
-    QtApplication = TimedApplication
-else:
-    # Use the normal stock QApplication.
-    QtApplication = QApplication
