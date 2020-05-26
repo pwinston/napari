@@ -120,8 +120,8 @@ class QtPerformance(QWidget):
 
         # We don't update any GUI/widgets while iterating over the timers.
         # Updating widgets can create immediate Qt Events which would modify the
-        # timersTIMERS  ut from under us!
-        for name, timer in perf.get_timers().items():
+        # timers out from under us!
+        for name, timer in perf.timers.timers.items():
 
             # The Qt Event "UpdateRequest" is the main "draw" event, so
             # that's what we use for our progress bar.
@@ -153,4 +153,4 @@ class QtPerformance(QWidget):
 
         # Clear all the timers since we've displayed them. They will immediately
         # start accumulating numbers for the next update.
-        perf.clear_timers()
+        perf.timers.clear()

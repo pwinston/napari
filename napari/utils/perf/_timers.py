@@ -51,16 +51,6 @@ class PerfTimers:
         # Menu item "Debug -> Record Trace File..." starts a trace.
         self.trace_file = None
 
-    def record_trace_file(self, path: str) -> None:
-        """Start recording a trace file to disk.
-
-        Parameters
-        ----------
-        path : str
-            Write the trace to this path.
-        """
-        self.trace_file = PerfTraceFile(path)
-
     def add_event(self, event: PerfEvent):
         """Add one timing event.
 
@@ -88,45 +78,27 @@ class PerfTimers:
         # so that we start accumulating fresh information.
         self.timers.clear()
 
-
-if USE_PERFMON:
-    GLOBAL_TIMERS = PerfTimers()
-
-    def add_event(event: PerfEvent):
-        """Add a PerfEvent.
+    def start_trace_file(self, path: str) -> None:
+        """Start recording a trace file to disk.
 
         Parameters
         ----------
-        event: PerfEvent
-            Add this event.
+        path : str
+            Write the trace to this path.
         """
-        GLOBAL_TIMERS.add_event(event)
+        self.trace_file = PerfTraceFile(path)
 
-    def get_timers():
-        """Return internal timers dict we can iterate over.
+    def stop_trace_file(self) -> None:
+        """Stop recording a trace file.
         """
-        return GLOBAL_TIMERS.timers
-
-    def clear_timers():
-        """Clear all timing data.
-        """
-        GLOBAL_TIMERS.clear()
-
-    def record_trace_file(path):
-        """Start recording a trace file.
-        """
-        GLOBAL_TIMERS.record_trace_file(path)
+        if self.trace_file is not None:
+            self.trace_file.outf.close()
+            self.trace_file = None
 
 
+if USE_PERFMON:
+    # The one global instance
+    timers = PerfTimers()
 else:
-
-    # We want to be 100% sure no one is using perf timers when the environment
-    # variable is not set, so we have disabled versions of these functions.
-
-    def disabled(**args):
-        raise NotImplementedError("Timers are not enabled")
-
-    add_event = disabled
-    get_timers = disabled
-    clear_timers = disabled
-    record_trace_file = disabled
+    # No one should be access this since env var is not set.
+    timers = None

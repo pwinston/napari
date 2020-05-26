@@ -10,7 +10,7 @@ from typing import Optional
 from ._compat import perf_counter_ns
 from ._config import USE_PERFMON, PYTHON_3_7
 from ._event import PerfEvent
-from ._timers import add_event
+from ._timers import timers
 
 
 if USE_PERFMON:
@@ -33,7 +33,7 @@ if USE_PERFMON:
         yield
         end_ns = perf_counter_ns()
         event = PerfEvent(category, name, start_ns, end_ns)
-        add_event(event)
+        timers.add_event(event)
 
     def perf_func(name):
         """Decorator to time a function.

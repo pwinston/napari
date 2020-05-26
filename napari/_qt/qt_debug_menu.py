@@ -3,8 +3,10 @@
 The debug menu is for developer-focused functionality that we want to be
 easy-to-use and discoverable, but which is not for the average user.
 
-Right now perfmon's "Record Trace File..." is the only item but we should
-have non-perf related items soon.
+Current Items
+-------------
+Start Trace File...
+Stop Trace File
 """
 from qtpy.QtWidgets import QAction, QFileDialog
 
@@ -36,14 +38,20 @@ class DebugMenu:
         """
         window = self._main_window._qt_window
 
-        record = QAction('Record Trace File...', window)
+        record = QAction('Start Trace File...', window)
         record.setShortcut('Alt+T')
-        record.setStatusTip('Record performance trace file.')
-        record.triggered.connect(self._record_trace_dialog)
+        record.setStatusTip('Start recording a performance trace file')
+        record.triggered.connect(self._start_trace_dialog)
         self.debug_menu.addAction(record)
 
-    def _record_trace_dialog(self):
-        """Record a performance trace file."""
+        record = QAction('Stop Trace File', window)
+        record.setShortcut('Shift+Alt+T')
+        record.setStatusTip('Stop recording a performance trace file')
+        record.triggered.connect(perf.timers.stop_trace_file)
+        self.debug_menu.addAction(record)
+
+    def _start_trace_dialog(self):
+        """Show save file dialog and start recording."""
         viewer = self._main_window.qt_viewer
 
         filename, _ = QFileDialog.getSaveFileName(
@@ -53,5 +61,5 @@ class DebugMenu:
             filter="Trace Files (*.json)",
         )
         if filename:
-            file_with_extension = _ensure_extension(filename, '.json')
-            perf.record_trace_file(file_with_extension)
+            filename = _ensure_extension(filename, '.json')
+            perf.timers.start_trace_file(filename)
