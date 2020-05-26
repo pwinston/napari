@@ -8,6 +8,7 @@ Current Items
 Start Trace File...
 Stop Trace File
 """
+from qtpy.QtCore import QTimer
 from qtpy.QtWidgets import QAction, QFileDialog
 
 from ..utils import perf
@@ -39,8 +40,13 @@ class DebugMenu:
     def window(self):
         return self._main_window._qt_window
 
-    def _set_recording(self, recording):
-        """Set whether we are currently recording a trace.
+    def _set_recording(self, recording: bool):
+        """Enable/disable menu items.
+
+        Parameters
+        ----------
+        record : bool
+            Are we currently recording a trace file.
         """
         self.start_trace.setEnabled(not recording)
         self.stop_trace.setEnabled(recording)
@@ -77,8 +83,14 @@ class DebugMenu:
         )
         if filename:
             filename = _ensure_extension(filename, '.json')
-            perf.timers.start_trace_file(filename)
-            self._set_recording(True)
+
+            def start_trace():
+                perf.timers.start_trace_file(filename)
+                self._set_recording(True)
+
+            # If we don't start with a timer the first event in the trace will
+            # be a super long "MetaCall" event for the file dialog.
+            QTimer.singleShot(0, start_trace)
 
     def _stop_trace(self):
         """Stop recording a trace file.

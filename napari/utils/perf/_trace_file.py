@@ -62,7 +62,6 @@ class PerfTraceFile:
         # Start writing the file with an open bracket, per JSON Array format.
         self.outf = open(path, "w")
         self.outf.write("[\n")
-        self.done = False
 
     def write_event(self, event: PerfEvent) -> None:
         """Write one perf event.

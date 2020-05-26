@@ -15,7 +15,7 @@ def _create_application() -> QApplication:
         return QApplication(sys.argv)  # Normal stock QApplication.
 
     # Special version that times Qt Events.
-    from .qt_application import QApplicationWithTiming
+    from .qt_timing import QApplicationWithTiming
 
     return QApplicationWithTiming(sys.argv)
 

@@ -55,12 +55,7 @@ if USE_PERFMON:
 
 
 else:
-    # Timing is disabled so we want null versions of both that have
-    # essentially zero runtime overhead.
-    def perf_func(name):
-        def decorator(func):
-            return func
-
+    # Disable both with hopefully zero run-time overhead.
     if PYTHON_3_7:
         perf_timer = contextlib.nullcontext()
     else:
@@ -68,3 +63,7 @@ else:
         @contextlib.contextmanager
         def perf_timer(name: str):
             yield
+
+    def perf_func(name):
+        def decorator(func):
+            return func
