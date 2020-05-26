@@ -5,8 +5,8 @@ easy-to-use and discoverable, but which is not for the average user.
 
 Current Items
 -------------
-Start Trace File...
-Stop Trace File
+Trace File -> Start Tracing...
+              Stop Tracking
 """
 from qtpy.QtCore import QTimer
 from qtpy.QtWidgets import QAction, QFileDialog
@@ -30,18 +30,30 @@ class DebugMenu:
         main_menu : qtpy.QtWidgets.QMainWindow.menuBar
             We add ourselves to this menu.
         """
-        self._main_window = main_window
-        self.debug_menu = self._main_window.main_menu.addMenu('&Debug')
+        self.debug_menu = main_window.main_menu.addMenu('&Debug')
+
+        self.trace_file_sub = TraceFileSub(
+            main_window, self.debug_menu.addMenu("Performance Trace")
+        )
+
+    @property
+    def qt_window(self):
+        return
+
+
+class TraceFileSub:
+    """The "Trace File" flyout menu.
+    """
+
+    def __init__(self, main_window, sub_menu):
+        self.main_window = main_window
+        self.sub_menu = sub_menu
         self.start_trace = self._add_start_trace()
         self.stop_trace = self._add_stop_trace()
         self._set_recording(False)
 
-    @property
-    def window(self):
-        return self._main_window._qt_window
-
     def _set_recording(self, recording: bool):
-        """Enable/disable menu items.
+        """Toggle which are enabled/disabed.
 
         Parameters
         ----------
@@ -52,28 +64,28 @@ class DebugMenu:
         self.stop_trace.setEnabled(recording)
 
     def _add_start_trace(self):
-        """Add "start trace" menu item.
+        """Add start recording menu item.
         """
-        start = QAction('Start Trace File...', self.window)
+        start = QAction('Start Recording...', self.main_window._qt_window)
         start.setShortcut('Alt+T')
-        start.setStatusTip('Start recording a performance trace file')
+        start.setStatusTip('Start recording a trace file')
         start.triggered.connect(self._start_trace)
-        self.debug_menu.addAction(start)
+        self.sub_menu.addAction(start)
         return start
 
     def _add_stop_trace(self):
-        """Add "stop trace" menu item.
+        """Add stop recording menu item.
         """
-        stop = QAction('Stop Trace File', self.window)
+        stop = QAction('Stop Recording', self.main_window._qt_window)
         stop.setShortcut('Shift+Alt+T')
-        stop.setStatusTip('Stop recording a performance trace file')
+        stop.setStatusTip('Stop recording a trace file')
         stop.triggered.connect(self._stop_trace)
-        self.debug_menu.addAction(stop)
+        self.sub_menu.addAction(stop)
         return stop
 
     def _start_trace(self):
         """Start recording a trace file."""
-        viewer = self._main_window.qt_viewer
+        viewer = self.main_window.qt_viewer
 
         filename, _ = QFileDialog.getSaveFileName(
             parent=viewer,
