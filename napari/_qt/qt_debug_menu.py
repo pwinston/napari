@@ -31,27 +31,42 @@ class DebugMenu:
         """
         self._main_window = main_window
         self.debug_menu = self._main_window.main_menu.addMenu('&Debug')
-        self._add_perf_actions()
+        self.start_trace = self._add_start_trace()
+        self.stop_trace = self._add_stop_trace()
+        self._set_recording(False)
 
-    def _add_perf_actions(self):
-        """Add performance related debug menu items.
+    @property
+    def window(self):
+        return self._main_window._qt_window
+
+    def _set_recording(self, recording):
+        """Set whether we are currently recording a trace.
         """
-        window = self._main_window._qt_window
+        self.start_trace.setEnabled(not recording)
+        self.stop_trace.setEnabled(recording)
 
-        record = QAction('Start Trace File...', window)
-        record.setShortcut('Alt+T')
-        record.setStatusTip('Start recording a performance trace file')
-        record.triggered.connect(self._start_trace_dialog)
-        self.debug_menu.addAction(record)
+    def _add_start_trace(self):
+        """Add "start trace" menu item.
+        """
+        start = QAction('Start Trace File...', self.window)
+        start.setShortcut('Alt+T')
+        start.setStatusTip('Start recording a performance trace file')
+        start.triggered.connect(self._start_trace)
+        self.debug_menu.addAction(start)
+        return start
 
-        record = QAction('Stop Trace File', window)
-        record.setShortcut('Shift+Alt+T')
-        record.setStatusTip('Stop recording a performance trace file')
-        record.triggered.connect(perf.timers.stop_trace_file)
-        self.debug_menu.addAction(record)
+    def _add_stop_trace(self):
+        """Add "stop trace" menu item.
+        """
+        stop = QAction('Stop Trace File', self.window)
+        stop.setShortcut('Shift+Alt+T')
+        stop.setStatusTip('Stop recording a performance trace file')
+        stop.triggered.connect(self._stop_trace)
+        self.debug_menu.addAction(stop)
+        return stop
 
-    def _start_trace_dialog(self):
-        """Show save file dialog and start recording."""
+    def _start_trace(self):
+        """Start recording a trace file."""
         viewer = self._main_window.qt_viewer
 
         filename, _ = QFileDialog.getSaveFileName(
@@ -63,3 +78,10 @@ class DebugMenu:
         if filename:
             filename = _ensure_extension(filename, '.json')
             perf.timers.start_trace_file(filename)
+            self._set_recording(True)
+
+    def _stop_trace(self):
+        """Stop recording a trace file.
+        """
+        perf.timers.stop_trace_file()
+        self._set_recording(False)
