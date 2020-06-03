@@ -37,7 +37,6 @@ def monkey_patch_event_timing(app: QApplication):
 
     def notify_with_timing(self, receiver, event):
         """Time the Qt Events as we handle them."""
-        print("MONKEY_PATCHED VERSION***********")
         timer_name = _get_timer_name(receiver, event)
 
         # Time the event while we handle it.
@@ -50,9 +49,7 @@ def monkey_patch_event_timing(app: QApplication):
     if not hasattr(app, '_napari_event_timing'):
         # Patch and record that we did so we never double patch which would be
         # very confusing and would degrade performance.
-        print(
-            "Napari: Monkey Patching the QAppliction instance for performance monitoring."
-        )
+        print("napari enabling Qt Event timing.")
         app.notify = bound_notify
         app._napari_event_timing = True
 
