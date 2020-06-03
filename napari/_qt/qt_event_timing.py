@@ -1,28 +1,46 @@
-"""Defines QApplicationWithEventTiming for perf mon.
+"""A special QApplication for perfmon.
 
-If the environment variable NAPARI_PERFMON is set we monkey patch in the
-notify_with_event_timing() method below to replace the stock
-QApplication.notify() method.
+Defines QApplicationWithTiming and convert_app_for_timing(), both of which we use
+when perfmon is enabled to time Qt Events.
 
-Our notify method times every Qt Event which powers the debug menu's "Start
-Tracing" feature as well as the dockable QtPerformance widget.
+Perf timers power the debug menu's "Start Tracing" feature as well as the
+dockable QtPerformance widget.
 """
-from types import MethodType
 from qtpy.QtWidgets import QApplication
 
 from ..utils import perf
 
-MONKEY_PATCHED = False
 
-
-def monkey_patch_event_timing(app: QApplication):
-    """
-    Replace the application's notify method with one that times event handling.
+def convert_app_for_timing(app: QApplication) -> QApplication:
+    """If necessary replace existing app with our special perfmon one.
 
     Parameters
     ----------
     app : QApplication
-        We replace the notify method of this application.
+        The existing application if any.
+    """
+    if isinstance(app, QApplicationWithTiming):
+        # We're already using QApplicationWithTiming so there is nothing
+        # to do. This happens when napari is launched from the command
+        # line because we create a QApplicationWithTiming in gui_qt.
+        return app
+
+    if app is not None:
+
+        # Because we can't monkey patch QApplication.notify (since it's a
+        # wrapped C++ method?) we delete the current app and create a new one.
+        # This must be done very early before any Qt objects are created.
+        import sip
+
+        sip.delete(app)
+
+    return QApplicationWithTiming([])
+
+
+class QApplicationWithTiming(QApplication):
+    """Extend QApplication to time Qt Events.
+
+    Our QApplication times how long the normal notify() method takes.
 
     Notes
     -----
@@ -30,28 +48,17 @@ def monkey_patch_event_timing(app: QApplication):
     notify() prior to the first one finishing, even several levels deep.
 
     The hierarchy of timers is displayed correctly in the chrome://tracing GUI.
-    Just seeing the structure of the event handling hierarchy can be very
-    informative even apart from the timing numbers.
+    Seeing the structure of the event handling hierarchy can be very informative
+    even apart from the timing numbers.
     """
-    original_notify = app.notify
 
-    def notify_with_timing(self, receiver, event):
-        """Time the Qt Events as we handle them."""
+    def notify(self, receiver, event):
+        """Time events while we handle them."""
         timer_name = _get_timer_name(receiver, event)
 
         # Time the event while we handle it.
         with perf.perf_timer(timer_name, "qt_event"):
-            return original_notify(receiver, event)
-
-    bound_notify = MethodType(notify_with_timing, app)
-
-    # Check if we are already patched first.
-    if not hasattr(app, '_napari_event_timing'):
-        # Patch and record that we did so we never double patch which would be
-        # very confusing and would degrade performance.
-        print("napari enabling Qt Event timing.")
-        app.notify = bound_notify
-        app._napari_event_timing = True
+            return QApplication.notify(self, receiver, event)
 
 
 def _get_timer_name(receiver, event) -> str:
@@ -80,6 +87,7 @@ def _get_timer_name(receiver, event) -> str:
     event_str = str(event.type()).split(".")[-1]
 
     try:
+        # There may or may not be a receiver object name.
         object_name = receiver.objectName()
     except AttributeError:
         # During shutdown the call to receiver.objectName() can fail with
@@ -89,5 +97,5 @@ def _get_timer_name(receiver, event) -> str:
     if object_name:
         return f"{event_str}:{object_name}"
 
-    # Many events have no object, only an event.
+    # Many events have no object, only an event string.
     return event_str
