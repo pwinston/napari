@@ -5,11 +5,13 @@ from os.path import dirname, join
 from qtpy.QtGui import QIcon
 from qtpy.QtWidgets import QApplication
 
+from ._qt.qt_event_timing import monkey_patch_event_timing
 from ._qt.qt_main_window import Window
 from ._qt.qt_viewer import QtViewer
 from ._qt.threading import wait_for_workers_to_quit, create_worker
 from .components import ViewerModel
 from . import __version__
+from .utils import perf
 
 
 class Viewer(ViewerModel):
@@ -61,6 +63,10 @@ class Viewer(ViewerModel):
                 " Then, restart IPython."
             )
             raise RuntimeError(message)
+
+        # When then NAPARI_PERFMON environment variable is set we time Qt Events.
+        if perf.USE_PERFMON:
+            monkey_patch_event_timing(app)
 
         if (
             platform.system() == "Windows"
