@@ -17,7 +17,7 @@ class ListLayersTable:
 
     def __init__(self, layers):
         self.layers = layers
-        self.table = TextTable(["ID", "NAME", "TYPE", "SHAPE"])
+        self.table = TextTable(["ID", "NAME", "TYPE", "LEVELS", "SHAPE"])
         for i, layer in enumerate(self.layers):
             self._add_row(i, layer)
 
@@ -31,18 +31,25 @@ class ListLayersTable:
         """
         if isinstance(data, list):
             if len(data) == 0:
-                return "NONE"  # e.g. Shape layer
+                return "NONE"  # Shape layer is empty list?
             else:
-                # Multi-scale
-                return f"{data[0].shape} ({len(data)} levels)"  # Multi-scale
+                return f"{data[0].shape}"  # Multi-scale
         else:
             return str(data.shape)
+
+    @staticmethod
+    def _get_num_levels(data) -> int:
+        """Get the number of levels of the data."""
+        if isinstance(data, list):
+            return len(data)
+        return 1
 
     def _add_row(self, i, layer):
         """Add one row to the layer list table."""
         layer_type = type(layer).__name__
+        num_levels = self._get_num_levels(layer.data)
         shape_str = self._get_shape_str(layer.data)
-        self.table.add_row([i, layer.name, layer_type, shape_str])
+        self.table.add_row([i, layer.name, layer_type, num_levels, shape_str])
 
     def print(self):
         """Print the whole table."""
@@ -104,7 +111,7 @@ class ConsoleCommands:
             return
 
         num_levels = len(layer.data)
-        header = f"ID: {layer_id} {layer.name} has {num_levels} levels"
+        header = f"{layer.name} (ID: {layer_id} Levels: {num_levels})"
         print(red(header))
         if num_levels > 0:
             InspectLayerTable(layer_id, layer).print()
