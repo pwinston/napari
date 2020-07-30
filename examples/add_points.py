@@ -45,4 +45,3 @@ with napari.gui_qt():
 
     # change the layer mode
     layer.mode = 'add'
-
