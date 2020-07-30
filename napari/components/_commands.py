@@ -1,4 +1,4 @@
-"""Commands class for IPython console.
+"""ConsoleCommands class for IPython console and related table classes.
 """
 from ..utils.text_table import TextTable, red
 
