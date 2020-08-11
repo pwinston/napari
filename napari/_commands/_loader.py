@@ -19,12 +19,15 @@ LOAD_TYPE_STR = {
 
 HELP_STR = f"""
 {highlight("Available Commands:")}
-cmd.help
-cmd.layers
-cmd.loads(lindex)
-cmd.set_default(index)
-cmd.set_sync(index)
-cmd.set_async(index)
+viewer.loader.help
+viewer.loader.cache
+viewer.loader.config
+viewer.loader.layers
+viewer.loader.levels(index)
+viewer.loader.loads(index)
+viewer.loader.set_default(index)
+viewer.loader.set_sync(index)
+viewer.loader.set_async(index)
 """
 
 
@@ -250,8 +253,7 @@ class LevelsTable:
         Show the levels of this layer.
     """
 
-    def __init__(self, layer_id: int, layer):
-        self.layer_id = layer_id
+    def __init__(self, layer):
         self.layer = layer
         self.table = RowTable(["LEVEL", "SHAPE", "TOTAL"])
         self.table = RowTable(
@@ -282,12 +284,15 @@ class LoaderCommands:
     def __init__(self, layerlist: List[Layer]):
         self.layerlist = layerlist
 
+    def __repr__(self):
+        return HELP_STR
+
     @property
     def help(self):
         print(HELP_STR)
 
     @property
-    def loader_config(self):
+    def config(self):
         """Print the current list of layers."""
         src = async_config
         config = [
@@ -301,17 +306,33 @@ class LoaderCommands:
         print_property_table(config)
 
     @property
+    def cache(self):
+        chunk_cache = chunk_loader.cache
+        table = [
+            ('enabled', chunk_cache.enabled),
+            ('currsize', chunk_cache.chunks.currsize),
+            ('maxsize', chunk_cache.chunks.maxsize),
+        ]
+        print_property_table(table)
+
+    @property
     def layers(self):
         """Print the current list of layers."""
         ChunkLoaderLayers(self.layerlist).print()
 
-    def _get_layer_info(self, layer_index) -> LayerInfo:
-        """Return the LayerInfo at this index."""
+    def _get_layer(self, layer_index) -> Layer:
         try:
-            layer = self.layerlist[layer_index]
+            return self.layerlist[layer_index]
         except KeyError:
             print(f"Layer index {layer_index} is invalid.")
             return None
+
+    def _get_layer_info(self, layer_index) -> LayerInfo:
+        """Return the LayerInfo at this index."""
+        layer = self._get_layer(layer_index)
+
+        if layer is None:
+            return
 
         layer_id = id(layer)
         info = chunk_loader.get_info(layer_id)
@@ -357,3 +378,40 @@ class LoaderCommands:
         info = self._get_layer_info(layer_index)
         if info is not None:
             info.load_type = LoadType.DEFAULT
+
+    def levels(self, layer_index: int) -> None:
+        """Print information on a single layer.
+        Prints summary and if multiscale prints a table of the levels:
+        Layer ID: 0
+            Name: LaminB1
+          Levels: 2
+        LEVEL  SHAPE
+        0      (1, 236, 275, 271)
+        1      (1, 236, 137, 135)
+        Parameters
+        ----------
+        layer_id : int
+            ConsoleCommand's id for the layer.
+        """
+        layer = self._get_layer(layer_index)
+        if layer is None:
+            return
+
+        num_levels = len(layer.data) if layer.multiscale else 1
+
+        # Common to both multi-scale and single-scale.
+        summary = [
+            ("Layer ID", layer_index),
+            ("Name", layer.name),
+            ("Levels", num_levels),
+        ]
+
+        if layer.multiscale:
+            # Print summary and level table.
+            print_property_table(summary)
+            print("")  # blank line
+            LevelsTable(layer).print()
+        else:
+            # Print summary with shape, no level table.
+            summary.append(("Shape", layer.data.shape))
+            print_property_table(summary)
