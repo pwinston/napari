@@ -6,9 +6,15 @@ import dask.array as da
 
 from ..layers.base import Layer
 from ..layers.image import Image
-from ..utils.chunk import LayerInfo, async_config, chunk_loader
+from ..utils.chunk import LayerInfo, LoadType, async_config, chunk_loader
 from ._humanize import naturalsize
 from ._tables import RowTable, print_property_table
+
+LOAD_TYPE_STR = {
+    LoadType.DEFAULT: "default",
+    LoadType.ASYNC: "sync",
+    LoadType.ASYNC: "async",
+}
 
 
 class InfoDisplayer:
@@ -27,6 +33,10 @@ class InfoDisplayer:
 
     def __init__(self, layer_info: LayerInfo):
         self.info = layer_info
+
+    @property
+    def sync(self):
+        return LOAD_TYPE_STR[self.info.load_type]
 
     @property
     def data_type(self):
@@ -107,7 +117,7 @@ def _get_size_str(data) -> str:
     return naturalsize(nbytes, gnu=True)
 
 
-class ChunkLoaderTable:
+class ChunkLoaderLayers:
     """Table showing information about each layer.
 
     Parameters
@@ -126,6 +136,7 @@ class ChunkLoaderTable:
         self.table = RowTable(
             [
                 "ID",
+                "SYNC",
                 {"name": "NAME", "align": "left"},
                 "LAYER",
                 "DATA",
@@ -198,6 +209,7 @@ class ChunkLoaderTable:
         self.table.add_row(
             [
                 index,
+                disp.sync,
                 layer.name,
                 layer_type,
                 disp.data_type,
@@ -276,7 +288,7 @@ class LoaderCommands:
     @property
     def loader(self):
         """Print the current list of layers."""
-        ChunkLoaderTable(self.layerlist).print()
+        ChunkLoaderLayers(self.layerlist).print()
 
     def loads(self, layer_index: int) -> None:
         """Print recent loads for this layer.

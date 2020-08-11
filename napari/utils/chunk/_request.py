@@ -149,9 +149,8 @@ class ChunkRequest:
         return sum(array.nbytes for array in self.chunks.values())
 
     @property
-    def in_memory(self):
-        """False if any chunk request are not ndarrays.
-        """
+    def in_memory(self) -> bool:
+        """True if all chunks are ndarrays."""
         for array in self.chunks.values():
             if not isinstance(array, np.ndarray):
                 return False

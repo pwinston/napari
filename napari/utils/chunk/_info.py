@@ -2,6 +2,7 @@
 """
 import logging
 import weakref
+from enum import Enum
 
 import dask.array as da
 
@@ -41,7 +42,17 @@ def _mbits(num_bytes, duration_ms) -> float:
     """Return Mbit/s."""
     mbits = (num_bytes * 8) / (1024 * 1024)
     seconds = duration_ms / 1000
+    if seconds == 0:
+        return 0
     return mbits / seconds
+
+
+class LoadType(Enum):
+    """How ChunkLoader should load this layer."""
+
+    DEFAULT = 0  # let ChunkLoader decide
+    SYNC = 1
+    ASYNC = 2
 
 
 class LoadInfo:
@@ -90,7 +101,10 @@ class LayerInfo:
         self.window_bytes: StatWindow = StatWindow(self.WINDOW_SIZE)
 
         # Keep most recent NUM_RECENT_LOADS loads
-        self.recent_loads = []
+        self.recent_loads: list = []
+
+        # By default we let ChunkLoader decide, but we can override that.
+        self.load_type: LoadType = LoadType.DEFAULT
 
     def get_layer(self):
         """Resolve our weakref to get the layer, log if not found.
@@ -109,7 +123,7 @@ class LayerInfo:
 
     @property
     def mbits(self) -> float:
-        """Return Mbit/secon."""
+        """Return Mbit/second."""
         return _mbits(self.window_bytes.average, self.window_ms.average)
 
     def load_finished(self, request: ChunkRequest) -> None:

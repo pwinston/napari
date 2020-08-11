@@ -27,7 +27,7 @@ from ..perf import perf_timer
 from ._cache import ChunkCache
 from ._config import async_config
 from ._delay_queue import ChunkDelayQueue
-from ._info import LayerInfo
+from ._info import LayerInfo, LoadType
 from ._request import ChunkKey, ChunkRequest
 
 LOGGER = logging.getLogger("ChunkLoader")
@@ -36,12 +36,11 @@ LOGGER = logging.getLogger("ChunkLoader")
 PoolExecutor = Union[futures.ThreadPoolExecutor, futures.ProcessPoolExecutor]
 
 
-def _chunk_loader_worker(request: ChunkRequest):
+def _chunk_loader_worker(request: ChunkRequest) -> ChunkRequest:
     """This is the worker thread or process that loads the array.
 
-    We have workers because when we call np.asarray() that might lead
-    to IO or computation which could take a while. We do not want to
-    do that in the GUI thread or the UI will block.
+    We call np.asarray() in a worker because it might lead to IO or
+    computation which would block the GUI thread.
 
     Parameters
     ----------
@@ -71,7 +70,7 @@ class ChunkLoader:
     """Loads chunks in worker threads or processes.
 
     We cannot call np.asarray() in the GUI thread because it might block on
-    IO or a computation. So the ChunkLoader calls np.asarry() for us in
+    IO or a computation. So the ChunkLoader calls np.asarray() for us in
     a worker thread or process.
 
     Attributes
@@ -201,11 +200,8 @@ class ChunkLoader:
         chunk_loaded() will be called in the GUI thread sometime in the future
         after the worker as performed the load.
         """
-        # We do an immediate load in the GUI thread in synchronous mode or
-        # the request is already in memory (ndarrays). However if
-        # self.load_seconds > 0 then we cannot load in the GUI thread
-        # because we have to sleep that long in the worker.
-        if self.synchronous or request.in_memory and not self.load_seconds:
+
+        if self._load_synchronously(request):
             LOGGER.info("ChunkLoader.load_chunk")
             request.load_chunks_gui()
             return request
@@ -233,6 +229,27 @@ class ChunkLoader:
         # ChunkLoader_submit_async() later on if the delay expires without
         # the request getting cancelled.
         self.delay_queue.add(request)
+
+    def _load_synchronously(self, request: ChunkRequest) -> bool:
+        """Return True if we should load this request synchronously."""
+
+        info = self._get_layer_info(request)
+
+        if info.load_type == LoadType.SYNC:
+            return True  # Layer is forcing sync loads.
+
+        if info.load_type == LoadType.ASYNC:
+            return False  # Layer is forcing async loads.
+
+        assert info.load_type == LoadType.DEFAULT  # So it must be default.
+
+        if self.synchronous:
+            return True  # ChunkLoader is in sync mode.
+
+        if self.load_seconds > 0:
+            return False  # We need to sleep() so can't be async.
+
+        return request.in_memory  # True if request has only ndarray chunks.
 
     def _submit_async(self, request: ChunkRequest) -> None:
         """Initiate an asynchronous load of the given request.
@@ -353,9 +370,6 @@ class ChunkLoader:
         # Lookup this Request's LayerInfo.
         info = self._get_layer_info(request)
 
-        if info is None:
-            return  # Ignore the chunks since no LayerInfo.
-
         # Resolve the weakref.
         layer = info.get_layer()
 
@@ -379,11 +393,10 @@ class ChunkLoader:
         """
         layer_id = request.key.layer_id
 
-        try:
-            return self.layer_map[layer_id]
-        except KeyError:
-            LOGGER.warn("ChunkLoader._done: no layer_id %d", layer_id)
-            return None
+        # Go ahead and raise KeyError if not found. This should never
+        # happen because we add the layer to the layer_map in
+        # ChunkLoader.create_request().
+        return self.layer_map[layer_id]
 
     def wait(self, data_id: int) -> None:
         """Wait for the given data to be loaded.
