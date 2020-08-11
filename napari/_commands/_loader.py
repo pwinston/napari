@@ -9,12 +9,23 @@ from ..layers.image import Image
 from ..utils.chunk import LayerInfo, LoadType, async_config, chunk_loader
 from ._humanize import naturalsize
 from ._tables import RowTable, print_property_table
+from ._utils import highlight
 
 LOAD_TYPE_STR = {
     LoadType.DEFAULT: "default",
     LoadType.SYNC: "sync",
     LoadType.ASYNC: "async",
 }
+
+HELP_STR = f"""
+{highlight("Available Commands:")}
+cmd.help
+cmd.layers
+cmd.loads(lindex)
+cmd.set_default(index)
+cmd.set_sync(index)
+cmd.set_async(index)
+"""
 
 
 class InfoDisplayer:
@@ -272,6 +283,10 @@ class LoaderCommands:
         self.layerlist = layerlist
 
     @property
+    def help(self):
+        print(HELP_STR)
+
+    @property
     def loader_config(self):
         """Print the current list of layers."""
         src = async_config
@@ -286,7 +301,7 @@ class LoaderCommands:
         print_property_table(config)
 
     @property
-    def loader(self):
+    def layers(self):
         """Print the current list of layers."""
         ChunkLoaderLayers(self.layerlist).print()
 
