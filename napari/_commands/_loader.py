@@ -12,7 +12,7 @@ from ._tables import RowTable, print_property_table
 
 LOAD_TYPE_STR = {
     LoadType.DEFAULT: "default",
-    LoadType.ASYNC: "sync",
+    LoadType.SYNC: "sync",
     LoadType.ASYNC: "async",
 }
 
@@ -290,6 +290,23 @@ class LoaderCommands:
         """Print the current list of layers."""
         ChunkLoaderLayers(self.layerlist).print()
 
+    def _get_layer_info(self, layer_index) -> LayerInfo:
+        """Return the LayerInfo at this index."""
+        try:
+            layer = self.layerlist[layer_index]
+        except KeyError:
+            print(f"Layer index {layer_index} is invalid.")
+            return None
+
+        layer_id = id(layer)
+        info = chunk_loader.get_info(layer_id)
+
+        if info is None:
+            print(f"Layer index {layer_index} has no LayerInfo.")
+            return None
+
+        return info
+
     def loads(self, layer_index: int) -> None:
         """Print recent loads for this layer.
 
@@ -298,17 +315,9 @@ class LoaderCommands:
         layer_index : int
             The index from the viewer.cmd.loader table.
         """
-        try:
-            layer = self.layerlist[layer_index]
-        except KeyError:
-            print(f"Layer index {layer_index} is invalid.")
-            return
-
-        layer_id = id(layer)
-        info = chunk_loader.get_info(layer_id)
+        info = self._get_layer_info(layer_index)
 
         if info is None:
-            print(f"Layer index {layer_index} has no LayerInfo.")
             return
 
         table = RowTable(["INDEX", "SIZE", "DURATION (ms)", "Mbit/s"])
@@ -318,3 +327,18 @@ class LoaderCommands:
             table.add_row((i, load.num_bytes, duration_str, mbits_str))
 
         table.print()
+
+    def set_sync(self, layer_index):
+        info = self._get_layer_info(layer_index)
+        if info is not None:
+            info.load_type = LoadType.SYNC
+
+    def set_async(self, layer_index):
+        info = self._get_layer_info(layer_index)
+        if info is not None:
+            info.load_type = LoadType.ASYNC
+
+    def set_default(self, layer_index):
+        info = self._get_layer_info(layer_index)
+        if info is not None:
+            info.load_type = LoadType.DEFAULT
