@@ -4,19 +4,11 @@ from typing import List
 
 import dask.array as da
 
-from ._humanize import naturalsize
 from ..layers.base import Layer
-from ._tables import print_property_table, RowTable
-from ._utils import highlight
-from ..utils.chunk import async_config, chunk_loader, LayerInfo
-
-
-HELP_STR = f"""
-{highlight("Available Commands:")}
-cmd.help
-cmd.list
-cmd.info(layer_id)
-"""
+from ..layers.image import Image
+from ..utils.chunk import LayerInfo, async_config, chunk_loader
+from ._humanize import naturalsize
+from ._tables import RowTable, print_property_table
 
 
 class InfoDisplayer:
@@ -55,8 +47,13 @@ class InfoDisplayer:
 
     @property
     def avg_ms(self):
-        ms = self.info.load_time_ms.average
+        ms = self.info.window_ms.average
         return f"{ms:.1f}"
+
+    @property
+    def mbits(self):
+        mbits = self.info.mbits
+        return f"{mbits:.1f}"
 
 
 class NoInfoDisplayer:
@@ -137,17 +134,23 @@ class ChunkLoaderTable:
                 "CHUNKS",
                 "TOTAL",
                 "AVG (ms)",
+                "MBIT/s",
                 "SHAPE",
             ]
         )
         for i, layer in enumerate(self.layers):
             self._add_row(i, layer)
 
-    def _get_shape_str(self, data):
+    def _get_shape_str(self, layer):
         """Get shape string for the data.
 
         Either "NONE" or a tuple like "(10, 100, 100)".
         """
+        # We only care about Image/Labels layers for now.
+        if not isinstance(layer, Image):
+            return "--"
+
+        data = layer.data
         if isinstance(data, list):
             if len(data) == 0:
                 return "NONE"  # Shape layer is empty list?
@@ -186,9 +189,9 @@ class ChunkLoaderTable:
         """
         layer_type = type(layer).__name__
         num_levels = self._get_num_levels(layer.data)
-        shape_str = self._get_shape_str(layer.data)
+        shape_str = self._get_shape_str(layer)
 
-        # Get LayerInfo and use the InfoDisplayer.
+        # Use InfoDisplayer to display LayerInfo
         info = chunk_loader.get_info(id(layer))
         disp = InfoDisplayer(info) if info is not None else NoInfoDisplayer()
 
@@ -203,6 +206,7 @@ class ChunkLoaderTable:
                 disp.num_chunks,
                 disp.total,
                 disp.avg_ms,
+                disp.mbits,
                 shape_str,
             ]
         )
@@ -273,3 +277,32 @@ class LoaderCommands:
     def loader(self):
         """Print the current list of layers."""
         ChunkLoaderTable(self.layerlist).print()
+
+    def loads(self, layer_index: int) -> None:
+        """Print recent loads for this layer.
+
+        Attributes
+        ----------
+        layer_index : int
+            The index from the viewer.cmd.loader table.
+        """
+        try:
+            layer = self.layerlist[layer_index]
+        except KeyError:
+            print(f"Layer index {layer_index} is invalid.")
+            return
+
+        layer_id = id(layer)
+        info = chunk_loader.get_info(layer_id)
+
+        if info is None:
+            print(f"Layer index {layer_index} has no LayerInfo.")
+            return
+
+        table = RowTable(["INDEX", "SIZE", "DURATION (ms)", "Mbit/s"])
+        for i, load in enumerate(info.recent_loads):
+            duration_str = f"{load.duration_ms:.1f}"
+            mbits_str = f"{load.mbits:.1f}"
+            table.add_row((i, load.num_bytes, duration_str, mbits_str))
+
+        table.print()

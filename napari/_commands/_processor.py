@@ -36,3 +36,7 @@ class CommandProcessor:
     def loader_config(self):
         """Print a table with ChunkLoader config."""
         return self.loader_commands.loader_config
+
+    def loads(self, layer_id):
+        """Print a table with ChunkLoader config."""
+        return self.loader_commands.loads(layer_id)

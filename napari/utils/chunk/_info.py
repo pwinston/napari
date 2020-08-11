@@ -37,6 +37,28 @@ def _get_type_str(data) -> str:
     return data_type.__name__
 
 
+def _mbits(num_bytes, duration_ms) -> float:
+    """Return Mbit/s."""
+    mbits = (num_bytes * 8) / (1024 * 1024)
+    seconds = duration_ms / 1000
+    return mbits / seconds
+
+
+class LoadInfo:
+    """Information about one load.
+
+    """
+
+    def __init__(self, num_bytes, duration_ms):
+        self.num_bytes = num_bytes
+        self.duration_ms = duration_ms
+
+    @property
+    def mbits(self) -> float:
+        """Return Mbits/second."""
+        return _mbits(self.num_bytes, self.duration_ms)
+
+
 class LayerInfo:
     """Information about one layer the ChunkLoader is tracking.
 
@@ -46,10 +68,12 @@ class LayerInfo:
         The layer we are loading chunks for.
     """
 
+    # Keep full details of this many recent loads.
+    NUM_RECENT_LOADS = 10
+
     # Window size for timing statistics. We use a simple average over the
-    # window. This is better than the just "last load time" because it
-    # won't jump around from one fluke. But we could do something much
-    # fancier in the future with filtering.
+    # window. This will jump around less than the "last load time" although
+    # we could do something fancier than average long term.
     WINDOW_SIZE = 10
 
     def __init__(self, layer):
@@ -61,8 +85,12 @@ class LayerInfo:
         self.num_chunks: int = 0
         self.num_bytes: int = 0
 
-        # Keep running average of load times.
-        self.load_time_ms: StatWindow = StatWindow(self.WINDOW_SIZE)
+        # Keep running averages of load time and size.
+        self.window_ms: StatWindow = StatWindow(self.WINDOW_SIZE)
+        self.window_bytes: StatWindow = StatWindow(self.WINDOW_SIZE)
+
+        # Keep most recent NUM_RECENT_LOADS loads
+        self.recent_loads = []
 
     def get_layer(self):
         """Resolve our weakref to get the layer, log if not found.
@@ -79,6 +107,11 @@ class LayerInfo:
             )
         return layer
 
+    @property
+    def mbits(self) -> float:
+        """Return Mbit/secon."""
+        return _mbits(self.window_bytes.average, self.window_ms.average)
+
     def load_finished(self, request: ChunkRequest) -> None:
         """This ChunkRequest was satisfied, record stats.
 
@@ -91,9 +124,16 @@ class LayerInfo:
         self.num_loads += 1
         self.num_chunks += request.num_chunks
 
-        # Total bytes loaded.
-        self.num_bytes += request.num_bytes
+        # Increment total bytes loaded.
+        num_bytes = request.num_bytes
+        self.num_bytes += num_bytes
 
-        # Record the load time.
+        # Update our StatWindows.
         load_ms = request.timers['load_chunks'].duration_ms
-        self.load_time_ms.add(load_ms)
+        self.window_ms.add(load_ms)
+        self.window_bytes.add(num_bytes)
+
+        # Keep at most self.NUM_RECENT_LOADS recent loads.
+        load_info = LoadInfo(num_bytes, load_ms)
+        keep = self.NUM_RECENT_LOADS - 1
+        self.recent_loads = self.recent_loads[-keep:] + [load_info]
