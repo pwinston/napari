@@ -14,71 +14,28 @@ Think of the ChunkLoader as a shared resource like "the filesystem" where
 multiple clients can be access it at the same time, but it is the interface
 to just one physical resource.
 """
-from contextlib import contextmanager
-from concurrent import futures
 import logging
-from typing import Dict, List, Optional, Union
 import weakref
+from concurrent import futures
+from contextlib import contextmanager
+from typing import Dict, List, Optional, Union
 
-import numpy as np
 import dask.array as da
+import numpy as np
 
 from ...types import ArrayLike
 from ...utils.event import EmitterGroup
-
+from ..perf import perf_timer
 from ._cache import ChunkCache
 from ._config import async_config
 from ._delay_queue import ChunkDelayQueue
 from ._request import ChunkKey, ChunkRequest
-from ..perf import perf_timer
+from ._utils import StatWindow
 
 LOGGER = logging.getLogger("ChunkLoader")
 
 # Executor for either a thread pool or a process pool.
 PoolExecutor = Union[futures.ThreadPoolExecutor, futures.ProcessPoolExecutor]
-
-
-class StatWindow:
-    """Maintain an average value over some rolling window.
-
-    Adding values is very efficient (once the window is full) but
-    calculating the average is O(size), although using numpy.
-
-    Parameters
-    ----------
-    size : int
-        The size of the window.
-    """
-
-    def __init__(self, size: int):
-        self.size = size
-        self.values = np.array([])  # float64 array
-        self.index = 0  # insert values here once full
-
-    def add(self, value: float):
-        """Add one value to the window.
-
-        Parameters
-        ----------
-        value : float
-            Add this value to the window.
-        """
-        if len(self.values) < self.size:
-            # This isn't super efficient but we're optimizing for the case
-            # when the array is full and we are just poking in values.
-            self.values = np.append(self.values, value)
-        else:
-            # Array is full, rotate through poking in one value at a time,
-            # this should be very fast.
-            self.values[self.index] = value
-            self.index = (self.index + 1) % self.size
-
-    @property
-    def average(self):
-        """Return the average of all values in the window."""
-        if len(self.values) == 0:
-            return 0  # Just say zero, really there is no value.
-        return np.average(self.values)
 
 
 def _chunk_loader_worker(request: ChunkRequest):

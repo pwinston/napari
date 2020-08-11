@@ -10,8 +10,8 @@ from typing import List, Tuple, Union
 import numpy as np
 
 from ...types import ArrayLike, Dict
-from ...utils.perf import perf_counter_ns, PerfEvent, timers
-from ._util import get_data_id
+from ...utils.perf import PerfEvent, perf_counter_ns, timers
+from ._utils import get_data_id
 
 LOGGER = logging.getLogger("ChunkLoader")
 
