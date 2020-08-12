@@ -90,3 +90,10 @@ class InstantEvent(PerfEvent):
     def __init__(self, name: str, time_ns: int, **kwargs):
         super().__init__(name, time_ns, time_ns, **kwargs)
         self.phase = "I"  # instant event
+
+
+class CounterEvent(PerfEvent):
+    def __init__(self, name: str, time_ns: int, value: int):
+        args = {"counter": value}
+        super().__init__(name, time_ns, time_ns, **args)
+        self.phase = "C"  # counter event

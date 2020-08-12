@@ -5,7 +5,7 @@ import os
 from typing import Optional
 
 from ._compat import perf_counter_ns
-from ._event import InstantEvent, PerfEvent
+from ._event import CounterEvent, InstantEvent, PerfEvent
 from ._stat import Stat
 from ._trace_file import PerfTraceFile
 
@@ -83,7 +83,7 @@ class PerfTimers:
             else:
                 self.timers[name] = Stat(duration_ms)
 
-    def add_instant_event(self, name: str, **kwargs):
+    def add_instant_event(self, name: str, **kwargs) -> None:
         """Add one instant event.
 
         Parameters
@@ -92,6 +92,9 @@ class PerfTimers:
             Add this event.
         """
         self.add_event(InstantEvent(name, perf_counter_ns(), **kwargs))
+
+    def add_counter_event(self, name: str, value: int) -> None:
+        self.add_event(CounterEvent(name, perf_counter_ns(), value))
 
     def clear(self):
         """Clear all timers.
@@ -124,6 +127,9 @@ if USE_PERFMON:
 
     def add_instant_event(name: str, **kwargs):
         timers.add_instant_event(name, **kwargs)
+
+    def add_counter_event(name: str, value: int):
+        timers.add_counter_event(name, value)
 
     @contextlib.contextmanager
     def perf_timer(
@@ -163,6 +169,9 @@ else:
     timers = None
 
     def add_instant_event(name: str, **kwargs):
+        pass
+
+    def add_counter_event(name: str, value: int):
         pass
 
     # contextlib.nullcontext does not work with kwargs, so we just
