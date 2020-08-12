@@ -2,7 +2,6 @@ from qtpy.QtCore import QObject, Signal
 
 from ..layers.base import Layer
 from ..utils.chunk import ChunkRequest, chunk_loader
-from ..utils.perf import add_instant_event
 
 
 class QtChunkReceiver(QObject):
@@ -35,7 +34,6 @@ class QtChunkReceiver(QObject):
 
         The method is probably running in a worker thread.
         """
-        add_instant_event("_chunk_loaded_worker")
         self.chunk_loaded_gui.emit(event.layer, event.request)
 
     def _chunk_loaded_gui(self, layer, request: ChunkRequest) -> None:
@@ -43,8 +41,6 @@ class QtChunkReceiver(QObject):
 
         The method is definitely running in the GUI thread.
         """
-        add_instant_event("_chunk_loaded_gui")
-
         # Pass the chunk to its layer.
         layer.chunk_loaded(request)
 
