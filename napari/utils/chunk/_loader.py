@@ -26,7 +26,7 @@ from ...utils.event import EmitterGroup
 from ..perf import perf_timer
 from ._cache import ChunkCache
 from ._config import async_config
-from ._delay_queue import ChunkDelayQueue
+from ._delay_queue import DelayQueue
 from ._info import LayerInfo, LoadType
 from ._request import ChunkKey, ChunkRequest
 
@@ -115,7 +115,7 @@ class ChunkLoader:
 
         # Delay queue prevents us from spamming the worker pool when the
         # user is rapidly scrolling through slices.
-        self.delay_queue = ChunkDelayQueue(
+        self.delay_queue = DelayQueue(
             async_config.delay_seconds, self._submit_async
         )
 
@@ -140,7 +140,7 @@ class ChunkLoader:
 
     def create_request(
         self, layer, key: ChunkKey, chunks: Dict[str, ArrayLike]
-    ):
+    ) -> ChunkRequest:
         """Create a ChunkRequest for submission to load_chunk.
 
         Parameters
@@ -276,6 +276,8 @@ class ChunkLoader:
         data_id : int
             Clear all requests associated with this data_id.
         """
+        LOGGER.info("ChunkLoader._clear_pending %d", data_id)
+
         # Clear delay queue first. This are trivial to clear because they
         # have not even been submitted to the worker pool.
         self.delay_queue.clear(data_id)
