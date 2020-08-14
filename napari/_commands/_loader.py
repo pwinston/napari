@@ -45,8 +45,11 @@ class InfoDisplayer:
         The LayerInfo to display.
     """
 
-    def __init__(self, layer_info: LayerInfo):
-        self.info = layer_info
+    def __init__(self, info: LayerInfo):
+        self.info = info
+        self.data_type = info.data_type
+        self.num_loads = info.num_loads
+        self.num_chunks = info.num_chunks
 
     @property
     def sync(self):
@@ -214,10 +217,10 @@ class ChunkLoaderLayers:
                 disp.sync,
                 layer.name,
                 layer_type,
-                disp.info.data_type,
+                disp.data_type,
                 num_levels,
-                disp.info.num_loads,
-                disp.info.num_chunks,
+                disp.num_loads,
+                disp.num_chunks,
                 disp.total,
                 disp.avg_ms,
                 disp.mbits,
