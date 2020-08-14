@@ -31,6 +31,15 @@ viewer.loader.set_async(index)
 """
 
 
+def format_bytes(num_bytes):
+    """Return formatted string like K, M, G.
+
+    The gnu=True flag produces GNU-style single letter suffixes which
+    are more compact then KiB, MiB, GiB.
+    """
+    return naturalsize(num_bytes, gnu=True)
+
+
 class InfoDisplayer:
     """Display LayerInfo values nicely for the table.
 
@@ -57,8 +66,7 @@ class InfoDisplayer:
 
     @property
     def total(self):
-        # gnu=True means single letter suffixes like 42K or 53M.
-        return naturalsize(self.info.num_bytes, gnu=True)
+        return format_bytes(self.info.num_bytes)
 
     @property
     def avg_ms(self):
@@ -299,10 +307,12 @@ class LoaderCommands:
     @property
     def cache(self):
         chunk_cache = chunk_loader.cache
+        cur_str = format_bytes(chunk_cache.chunks.currsize)
+        max_str = format_bytes(chunk_cache.chunks.maxsize)
         table = [
             ('enabled', chunk_cache.enabled),
-            ('currsize', chunk_cache.chunks.currsize),
-            ('maxsize', chunk_cache.chunks.maxsize),
+            ('currsize', cur_str),
+            ('maxsize', max_str),
         ]
         print_property_table(table)
 
