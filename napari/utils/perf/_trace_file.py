@@ -89,8 +89,8 @@ class PerfTraceFile:
         category = "none" if event.category is None else event.category
 
         data = {
-            "pid": event.process_id,
-            "tid": event.thread_id,
+            "pid": event.origin.process_id,
+            "tid": event.origin.thread_id,
             "name": event.name,
             "cat": category,
             "ph": event.phase,
