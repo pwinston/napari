@@ -53,20 +53,8 @@ class InfoDisplayer:
         return LOAD_TYPE_STR[self.info.load_type]
 
     @property
-    def data_type(self):
-        return self.info.data_type
-
-    @property
-    def num_loads(self):
-        return self.info.num_loads
-
-    @property
-    def num_chunks(self):
-        return self.info.num_chunks
-
-    @property
     def total(self):
-        # gnu=True gives the short "103M" or "92K" suffixes.
+        # gnu=True means single letter suffixes like 42K or 53M.
         return naturalsize(self.info.num_bytes, gnu=True)
 
     @property
@@ -226,10 +214,10 @@ class ChunkLoaderLayers:
                 disp.sync,
                 layer.name,
                 layer_type,
-                disp.data_type,
+                disp.info.data_type,
                 num_levels,
-                disp.num_loads,
-                disp.num_chunks,
+                disp.info.num_loads,
+                disp.info.num_chunks,
                 disp.total,
                 disp.avg_ms,
                 disp.mbits,
