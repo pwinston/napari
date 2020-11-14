@@ -207,7 +207,7 @@ class Octree:
         image : ndarray
             Create the octree for this single image.
         """
-        info = OctreeInfo(image.shape, tile_size)
+        info = OctreeInfo.create(image.shape, tile_size)
 
         with block_timer("create_tiles", print_time=True):
             tiles = _create_tiles(image, info.tile_size)
