@@ -216,9 +216,8 @@ class DecayTimes:
         np.ndarray
             The alpha values for each LED.
         """
-        duration = now - self._last
-        fractions = np.clip(1 - (duration / self._decay), 0, 1)
-        return np.interp(fractions, [0, 1], [ALPHA_OFF, ALPHA_MAX])
+        fractions = (now - self._last) / self._decay
+        return np.interp(fractions, [0, 1], [ALPHA_MAX, ALPHA_OFF])
 
 
 def _print_calibration():
@@ -311,10 +310,12 @@ class LedState:
         np.ndarray
             Color (r, g, b, a)values for each LED.
         """
-        # Use whichever alpha is higher (draws brighter).
-        active = self._active.get_alpha(now)
-        peak = self._peak.get_alpha(now)
-        alpha = np.maximum(active, peak)
+        # Use whichever alpha is higher (brighter).
+        alpha = np.maximum(
+            self._active.get_alpha(now), self._peak.get_alpha(now)
+        )
+
+        # Combine the fixed colors with the computed alpha values.
         return np.hstack((self._color, alpha.reshape(-1, 1)))
 
 
@@ -412,13 +413,11 @@ class QtFrameRate(QLabel):
         colors = self.leds.get_colors(now)
 
         # Draw each segment with the right color and alpha (due to decay).
-        # Would be cool to get all the colors in one numpy vectorized step!
         for index in range(NUM_SEGMENTS):
-            color = colors[index]
             x0 = int(index * SEGMENT_SPACING)
             x1 = int(x0 + SEGMENT_WIDTH)
             y0, y1 = 0, BITMAP_SHAPE[0]  # The whole height of the bitmap.
-            self._image[y0:y1, x0:x1] = color
+            self._image[y0:y1, x0:x1] = colors[index]
 
     def _update_bitmap(self) -> None:
         """Update the bitmap with latest image data."""
