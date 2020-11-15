@@ -1,12 +1,12 @@
-"""create_tiles() function.
+"""create_multi_scale_levels() function.
 
 This file is early/placeholder. In normal useage we might never create
-tiles, downsampling images, because it's so slow. But for debugging
-and development we do make tiles on the fly.
+tiles, because downsampling images is very slow. But for debugging and
+development we do make tiles on the fly, for test images and other reasons.
 
-Long term we could make tiles in the background at some point, so as you
-browse a large image that doesn't have tiles, they are created. But that's
-pretty speculative and far out.
+Long term we might possible make tiles in the background at some point. So
+as you browse a large image that doesn't have tiles, they are created in
+the background. But that's pretty speculative and far out.
 """
 from typing import List
 
@@ -161,12 +161,30 @@ def _create_coarser_level(tiles: TileArray) -> TileArray:
 
 
 def create_multi_scale_levels(image: np.ndarray, tile_size: int) -> List:
-    """Turn an image into a multi-scale image with levels."""
+    """Turn an image into a multi-scale image with levels.
+
+    Parameters
+    ----------
+    image : np.darray
+        The full image to create levels from.
+    tile_size : int
+        The edge length for the square tiles we should use, like 256.
+    """
     with block_timer("create_tiles", print_time=True):
         tiles = create_tiles(image, tile_size)
+
+    # This is the full resolution level zero.
     levels = [tiles]
 
-    # Keep combining tiles until there is one root tile.
+    # Create the high levels by combining tiles. With each higher level four
+    # tiles from the lower level combine into one tile at the higher level.
+    # All the tiles are the same size in pixels, so the four tiles are combined
+    # and then sized down by half.
+    #
+    # We keep creating new levels by combining tiles until we create a level
+    # that on has a single tile. This is the root level.
+
+    # Keep going as long as the last level we created as more than one tile.
     while not _one_tile(levels[-1]):
         with block_timer(
             f"Create coarser level {len(levels)}:", print_time=True
