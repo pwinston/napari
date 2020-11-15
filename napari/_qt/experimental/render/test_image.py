@@ -73,7 +73,7 @@ def create_test_image_multi(text, config: ImageConfig) -> np.ndarray:
     The test image just has digits all over it. The digits will typically
     be used to show the slice number.
 
-    shape: Tuple[int, int]
+    image_shape: Tuple[int, int]
         The [height, width] shape of the image.
     """
     text = str(text)  # Might be an int.
