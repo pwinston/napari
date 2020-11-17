@@ -18,7 +18,7 @@ from scipy import ndimage as ndi
 
 from ....types import ArrayLike
 from ....utils.perf import block_timer
-from .octree_util import ImageConfig, TileArray
+from .octree_util import ImageConfig, NormalNoise, TileArray
 
 
 def _get_tile(tiles: TileArray, row, col):
@@ -36,10 +36,18 @@ def _one_tile(tiles: TileArray) -> bool:
     return len(tiles) == 1 and len(tiles[0]) == 1
 
 
-def _add_delay(array, rand_loc: float, rand_scale: float):
+def _add_delay(array, delay_ms: NormalNoise):
+    """Add a random delay when this array is first accessed.
+
+    Parameters
+    ----------
+    noise : NormalNoise
+        The amount of the random delay in milliseconds.
+    """
+
     @dask.delayed
     def delayed(array):
-        sleep_ms = max(0, np.random.normal(rand_loc, rand_scale))
+        sleep_ms = max(0, np.random.normal(delay_ms.mean, delay_ms.std_dev))
         time.sleep(sleep_ms / 1000)
         return array
 
@@ -68,8 +76,7 @@ def create_tiles(array: np.ndarray, image_config: ImageConfig) -> np.ndarray:
 
     tiles = []
     tile_size = image_config.tile_size
-    rand_loc = image_config.rand_loc
-    rand_scale = image_config.rand_scale
+    delay_ms = image_config.delay_ms
 
     print(f"create_tiles array={array.shape} tile_size={tile_size}")
 
@@ -80,8 +87,8 @@ def create_tiles(array: np.ndarray, image_config: ImageConfig) -> np.ndarray:
         while col < cols:
             tile = array[row : row + tile_size, col : col + tile_size, :]
 
-            if rand_loc is not None:
-                tile = _add_delay(tile, rand_loc, rand_scale)
+            if not delay_ms.is_zero:
+                tile = _add_delay(tile, delay_ms)
 
             row_tiles.append(tile)
             col += tile_size

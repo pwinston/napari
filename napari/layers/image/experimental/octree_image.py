@@ -12,7 +12,7 @@ from ._chunked_slice_data import ChunkedSliceData
 from ._octree_multiscale_slice import OctreeMultiscaleSlice
 from .octree_intersection import OctreeIntersection
 from .octree_level import OctreeLevelInfo
-from .octree_util import ImageConfig, OctreeChunk, OctreeChunkKey
+from .octree_util import ImageConfig, NormalNoise, OctreeChunk, OctreeChunkKey
 
 DEFAULT_TILE_SIZE = 64  # TODO_OCTREE: get from somewhere else
 
@@ -45,6 +45,11 @@ class OctreeImage(Image):
 
         # For logging only
         self.frame_count = 0
+
+        # For debugging and demos, inject a random delay in from of every
+        # octree chunk that we access. To simulate latency from IO or
+        # computation.
+        self._delay_ms = NormalNoise()
 
         super().__init__(*args, **kwargs)
         self.events.add(auto_level=Event, octree_level=Event, tile_size=Event)
@@ -135,8 +140,8 @@ class OctreeImage(Image):
     def tile_size(self, tile_size: int) -> None:
         self._tile_size = tile_size
         self.events.tile_size()
-        self._slice = None
-        self.refresh()
+        self._slice = None  # For now must explicitly delete it
+        self.refresh()  # Create a new slice.
 
     @property
     def image_config(self) -> ImageConfig:
@@ -407,10 +412,8 @@ class OctreeImage(Image):
         if self._outside_data_range(indices):
             return
 
-        rand_loc = 0
-        rand_scale = 0
         image_config = ImageConfig.create(
-            self.data[0].shape, self._tile_size, rand_loc, rand_scale
+            self.data[0].shape, self._tile_size, self._delay_ms
         )
 
         if self._slice is None:
@@ -431,3 +434,13 @@ class OctreeImage(Image):
         if self._slice.on_chunk_loaded(request):
             # Tell the visual to redraw with this new chunk.
             self.events.loaded()
+
+    @property
+    def delay_ms(self) -> NormalNoise:
+        return self._delay_ms
+
+    @delay_ms.setter
+    def delay_ms(self, delay_ms: NormalNoise):
+        self._delay_ms = delay_ms
+        self._slice = None  # For now must explicitly delete it
+        self.refresh()  # Create a new slice.

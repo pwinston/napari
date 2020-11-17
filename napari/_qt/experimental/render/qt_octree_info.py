@@ -6,7 +6,7 @@ import numpy as np
 from qtpy.QtWidgets import QCheckBox, QFrame, QVBoxLayout
 
 from ....components.experimental import chunk_loader
-from ....layers.image.experimental.octree_image import OctreeImage
+from ....layers.image.experimental.octree_image import NormalNoise, OctreeImage
 from .qt_render_widgets import QtLabeledComboBox, QtSimpleTable
 
 
@@ -34,6 +34,37 @@ def _get_table_values(layer: OctreeImage) -> dict:
         "Tile Shape": _shape([layer.tile_size, layer.tile_size]),
         "Layer Shape": _shape(level_info.image_shape),
     }
+
+
+def _create_mean_combo(on_set) -> QtLabeledComboBox:
+    delay_mean = {
+        "0ms": 0,
+        "10ms": 10,
+        "20ms": 20,
+        "50ms": 50,
+        "100ms": 100,
+        "200ms": 200,
+        "500ms": 500,
+        "1000ms": 1000,
+    }
+    return QtLabeledComboBox("Mean Delay", delay_mean, on_set)
+
+
+def _create_std_dev_combo(on_set) -> QtLabeledComboBox:
+    delay_deviation = {
+        "0ms": 0,
+        "1ms": 1,
+        "2ms": 2,
+        "5ms": 5,
+        "10ms": 10,
+        "20ms": 20,
+        "50ms": 50,
+        "100ms": 100,
+        "200ms": 200,
+        "500ms": 500,
+        "1000ms": 1000,
+    }
+    return QtLabeledComboBox("Std Dev", delay_deviation, on_set)
 
 
 class QtOctreeInfoLayout(QVBoxLayout):
@@ -69,6 +100,11 @@ class QtOctreeInfoLayout(QVBoxLayout):
                 self.layer.auto_level = False
                 self.layer.octree_level = level
 
+        def on_set_delay(_value: int) -> None:
+            mean = self.mean_combo.get_value()
+            std_dev = self.std_dev_combo.get_value()
+            self.layer.delay_ms = NormalNoise(mean, std_dev)
+
         def on_set_track(value: int):
             self.layer.track_view = value != 0
 
@@ -90,12 +126,16 @@ class QtOctreeInfoLayout(QVBoxLayout):
         # the user almost always wants.
         level_options = {"AUTO": -1}
         level_options.update({str(x): x for x in np.arange(0, num_levels)})
-
-        # Select which octree level to view or AUTO for normal mode.
         self.level = QtLabeledComboBox(
             "Octree Level", level_options, on_set_level
         )
         self.addWidget(self.level)
+
+        # Delay for debugging (simulates latency).
+        self.mean_combo = _create_mean_combo(on_set_delay)
+        self.addWidget(self.mean_combo)
+        self.std_dev_combo = _create_std_dev_combo(on_set_delay)
+        self.addWidget(self.std_dev_combo)
 
         # Show some keys and values about the octree.
         self.table = QtSimpleTable()

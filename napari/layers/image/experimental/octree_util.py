@@ -11,6 +11,16 @@ from ....types import ArrayLike
 TileArray = List[List[np.ndarray]]
 
 
+class NormalNoise(NamedTuple):
+    mean: float = 0
+    std_dev: float = 0
+
+    @property
+    def is_zero(self) -> bool:
+        """Return true if there is no noise at all."""
+        return self.mean == 0 and self.std_dev == 0
+
+
 class OctreeChunkGeom(NamedTuple):
     """Position and scale of the chunk, for rendering."""
 
@@ -73,20 +83,18 @@ class ImageConfig(NamedTuple):
     base_shape: Tuple[int, int]
     aspect: float
     tile_size: int
-    rand_loc: float
-    rand_scale: float
+    delay_ms: NormalNoise = NormalNoise()
 
     @classmethod
     def create(
         cls,
         base_shape: Tuple[int, int],
         tile_size: int,
-        rand_loc: float = None,
-        rand_scale: float = None,
+        delay_ms: NormalNoise = NormalNoise(),
     ):
         """Create ImageConfig."""
         aspect = base_shape[1] / base_shape[0]
-        return cls(base_shape, aspect, tile_size, rand_loc, rand_scale)
+        return cls(base_shape, aspect, tile_size, delay_ms)
 
 
 class OctreeChunk:
