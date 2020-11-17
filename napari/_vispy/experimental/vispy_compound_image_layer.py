@@ -128,7 +128,9 @@ class VispyCompoundImageLayer(VispyImageLayer):
         self._set_node_data(node, octree_chunk.data)
 
         # Add the node under us, transformed into the right place.
-        node.transform = STTransform(octree_chunk.scale, octree_chunk.pos)
+        node.transform = STTransform(
+            octree_chunk.geom.scale, octree_chunk.geom.pos
+        )
         node.parent = self._tiled_visual_parent
         node.order = IMAGE_NODE_ORDER
 
