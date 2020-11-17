@@ -37,34 +37,29 @@ def _get_table_values(layer: OctreeImage) -> dict:
 
 
 def _create_mean_combo(on_set) -> QtLabeledComboBox:
-    delay_mean = {
-        "0ms": 0,
-        "10ms": 10,
-        "20ms": 20,
-        "50ms": 50,
-        "100ms": 100,
-        "200ms": 200,
-        "500ms": 500,
-        "1000ms": 1000,
-    }
-    return QtLabeledComboBox("Mean Delay", delay_mean, on_set)
+    """Return combo box for the mean noise setting.
+
+    Return
+    ------
+    QtLabeledComboBox
+        The new combo box.
+    """
+    options = {str(x): x for x in [0, 10, 20, 50, 100, 200, 500, 1000]}
+    return QtLabeledComboBox("Mean Delay (ms)", options, on_set)
 
 
 def _create_std_dev_combo(on_set) -> QtLabeledComboBox:
-    delay_deviation = {
-        "0ms": 0,
-        "1ms": 1,
-        "2ms": 2,
-        "5ms": 5,
-        "10ms": 10,
-        "20ms": 20,
-        "50ms": 50,
-        "100ms": 100,
-        "200ms": 200,
-        "500ms": 500,
-        "1000ms": 1000,
+    """Return combo box for the std dev noise setting.
+
+    Return
+    ------
+    QtLabeledComboBox
+        The new combo box.
+    """
+    options = {
+        str(x): x for x in [0, 1, 2, 5, 10, 20, 50, 100, 200, 500, 1000]
     }
-    return QtLabeledComboBox("Std Dev", delay_deviation, on_set)
+    return QtLabeledComboBox("Std Dev (ms)", options, on_set)
 
 
 class QtOctreeInfoLayout(QVBoxLayout):
