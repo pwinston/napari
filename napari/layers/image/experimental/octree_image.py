@@ -207,12 +207,14 @@ class OctreeImage(Image):
         assert 0 <= level < self.num_octree_levels
         self._octree_level = level
         self.events.octree_level()
-        self.refresh()  # Create new slice with this level.
+        if self._slice is not None:
+            self._slice.octree_level = level
+        self.events.loaded()  # redraw
 
     @property
     def num_octree_levels(self) -> int:
         """Return the total number of octree levels."""
-        return len(self.data) - 1  # Multiscale
+        return len(self.data)  # Multiscale
 
     def _new_empty_slice(self) -> None:
         """Initialize the current slice to an empty image.
@@ -281,7 +283,7 @@ class OctreeImage(Image):
 
             if octree_chunk.in_memory:
                 # The chunk is fully in memory, we can view it right away.
-                _log(i, len(chunks), "ALREADY LOADED", octree_chunk)
+                # _log(i, len(chunks), "ALREADY LOADED", octree_chunk)
                 visible_chunks.append(octree_chunk)
                 visible_set.add(octree_chunk.key)
             elif octree_chunk.loading:

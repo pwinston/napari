@@ -2,23 +2,12 @@
 
 Shows octree-specific information in the QtRender widget.
 """
-from typing import Callable
-
 import numpy as np
-from qtpy.QtWidgets import (
-    QCheckBox,
-    QComboBox,
-    QFrame,
-    QHBoxLayout,
-    QLabel,
-    QVBoxLayout,
-)
+from qtpy.QtWidgets import QCheckBox, QFrame, QVBoxLayout
 
 from ....components.experimental import chunk_loader
 from ....layers.image.experimental.octree_image import OctreeImage
-from .qt_render_widgets import QtSimpleTable
-
-IntCallback = Callable[[int], None]
+from .qt_render_widgets import QtLabeledComboBox, QtSimpleTable
 
 
 def _get_table_values(layer: OctreeImage) -> dict:
@@ -47,42 +36,6 @@ def _get_table_values(layer: OctreeImage) -> dict:
     }
 
 
-class QtLevelCombo(QHBoxLayout):
-    """Combo box to choose an octree level or AUTO.
-
-    Parameters
-    ----------
-    num_levels : int
-        The number of available levels.
-    on
-    """
-
-    def __init__(self, num_levels: int, on_set_level: IntCallback):
-        super().__init__()
-
-        self.addWidget(QLabel("Octree Level"))
-
-        # AUTO means napari selects the appropriate octree level
-        # dynamically as you zoom in or out.
-        items = ["AUTO"] + [str(x) for x in np.arange(0, num_levels)]
-
-        self.level = QComboBox()
-        self.level.addItems(items)
-        self.level.activated[int].connect(on_set_level)
-        self.addWidget(self.level)
-
-    def set_index(self, index: int) -> None:
-        """Set the dropdown's value.
-
-        Parameters
-        ----------
-        index : int
-            Index of dropdown where AUTO is index 0.
-        """
-        # Add one because AUTO is at index 0.
-        self.level.setCurrentIndex(0 if index is None else (index + 1))
-
-
 class QtOctreeInfoLayout(QVBoxLayout):
     """OctreeImage specific information.
 
@@ -93,7 +46,7 @@ class QtOctreeInfoLayout(QVBoxLayout):
     ----------
     layer : OctreeImage
         Show octree info for this layer.
-    on_set_level : IntCallback
+    on_set_level : Callable[[int], None]
         Call this when the octree level is changed.
     """
 
@@ -109,12 +62,12 @@ class QtOctreeInfoLayout(QVBoxLayout):
             self.layer.show_grid = value != 0
 
         def on_set_level(value: int) -> None:
-            # Drop down has AUTO at index 0.
-            if value == 0:
+            if value == 0:  # This is AUTO
                 self.layer.auto_level = True
             else:
+                level = value - 1  # Account for AUTO at 0
                 self.layer.auto_level = False
-                self.layer.octree_level = value - 1
+                self.layer.octree_level = level
 
         def on_set_track(value: int):
             self.layer.track_view = value != 0
@@ -129,9 +82,17 @@ class QtOctreeInfoLayout(QVBoxLayout):
         # Toggle debug grid drawn around tiles.
         self._create_checkbox("Show Grid", layer.show_grid, on_set_grid)
 
+        # AUTO means napari selects the appropriate octree level
+        # dynamically as you zoom in or out.
+        num_levels = layer.num_octree_levels
+        level_options = {"AUTO": -1}
+        level_options.update({str(x): x for x in np.arange(0, num_levels)})
+
         # Select which octree level to view or AUTO for normal mode.
-        self.level = QtLevelCombo(layer.num_octree_levels, on_set_level)
-        self.addLayout(self.level)
+        self.level = QtLabeledComboBox(
+            "Octree Level", level_options, on_set_level
+        )
+        self.addWidget(self.level)
 
         # Show some keys and values about the octree.
         self.table = QtSimpleTable()
@@ -153,7 +114,9 @@ class QtOctreeInfoLayout(QVBoxLayout):
         layer : OctreeImage
             Set controls based on this layer.
         """
-        self.level.set_index(0 if layer.auto_level else layer.octree_level + 1)
+        self.level.set_value(
+            "AUTO" if layer.auto_level else layer.octree_level
+        )
         self.table.set_values(_get_table_values(layer))
 
 
