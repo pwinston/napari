@@ -406,8 +406,12 @@ class OctreeImage(Image):
         this class OctreeImage becomes Image. And the non-tiled multiscale
         logic in Image._set_view_slice goes away entirely.
         """
-        if self._slice is not None:  # bail as a test
+        if self._slice is not None:
+            # For now bail out so we don't nuke an existing slice which
+            # contains an existing octree. Soon we'll need to figure out
+            # if we are really changing slices (and need a new octree).
             return
+
         indices = np.array(self._slice_indices)
         if self._outside_data_range(indices):
             return
@@ -416,9 +420,16 @@ class OctreeImage(Image):
             self.data[0].shape, self._tile_size, self._delay_ms
         )
 
+        indices = tuple(self._slice_indices)
+
+        if self.rgb:
+            indices += (slice(None),)
+
+        slice_data = [level_data[indices] for level_data in self.data]
+
         if self._slice is None:
             self._slice = OctreeMultiscaleSlice(
-                self.data, image_config, self._raw_to_displayed
+                slice_data, image_config, self._raw_to_displayed,
             )
 
     def on_chunk_loaded(self, request: ChunkRequest) -> None:

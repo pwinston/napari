@@ -70,9 +70,10 @@ def create_tiles(array: np.ndarray, image_config: ImageConfig) -> np.ndarray:
     tiles_size : int
         Edge length of the square tiles.
     """
-    if array.ndim != 3:
+    # Array is either ndim==2 (grayscale) or ndim==3 (RGB).
+    if array.ndim < 2 or array.ndim > 3:
         raise ValueError(f"Unexpected array dimension {array.ndim}")
-    (rows, cols, _) = array.shape
+    rows, cols = array.shape[:2]
 
     tiles = []
     tile_size = image_config.tile_size
@@ -85,7 +86,14 @@ def create_tiles(array: np.ndarray, image_config: ImageConfig) -> np.ndarray:
         row_tiles = []
         col = 0
         while col < cols:
-            tile = array[row : row + tile_size, col : col + tile_size, :]
+            array_slice = (
+                slice(row, row + tile_size),
+                slice(col, col + tile_size),
+            )
+            if array.ndim == 3:
+                array_slice += (slice(None),)  # Add the colors.
+
+            tile = array[array_slice]
 
             if not delay_ms.is_zero:
                 tile = _add_delay(tile, delay_ms)
