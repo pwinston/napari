@@ -9,7 +9,7 @@ as you browse a large image that doesn't have tiles, they are created in
 the background. But that's pretty speculative and far out.
 """
 import time
-from typing import List
+from typing import List, Optional
 
 import dask
 import dask.array as da
@@ -17,8 +17,7 @@ import numpy as np
 from scipy import ndimage as ndi
 
 from ....types import ArrayLike
-from ....utils.perf import block_timer
-from .octree_util import ImageConfig, NormalNoise, TileArray
+from .octree_util import NormalNoise, TileArray
 
 
 def _get_tile(tiles: TileArray, row, col):
@@ -54,7 +53,9 @@ def _add_delay(array, delay_ms: NormalNoise):
     return da.from_delayed(delayed(array), array.shape, array.dtype)
 
 
-def create_tiles(array: np.ndarray, image_config: ImageConfig) -> np.ndarray:
+def create_tiles(
+    array: np.ndarray, tile_size: int, delay_ms: Optional[NormalNoise] = None
+) -> np.ndarray:
     """
     Return an NxM array of (tile_size, tile_size) ndarrays except the edge
     tiles might be smaller if the array did not divide evenly.
@@ -76,8 +77,6 @@ def create_tiles(array: np.ndarray, image_config: ImageConfig) -> np.ndarray:
     rows, cols = array.shape[:2]
 
     tiles = []
-    tile_size = image_config.tile_size
-    delay_ms = image_config.delay_ms
 
     print(f"create_tiles array={array.shape} tile_size={tile_size}")
 
@@ -207,41 +206,6 @@ def _create_coarser_level(tiles: TileArray) -> TileArray:
     return level
 
 
-def create_downsampled_levels(image: np.ndarray, tile_size: int) -> List:
-    """Turn an image into a multi-scale image with levels.
-
-    Parameters
-    ----------
-    image : np.darray
-        The full image to create levels from.
-    tile_size : int
-        The edge length for the square tiles we should use, like 256.
-    """
-    with block_timer("create_tiles", print_time=True):
-        tiles = create_tiles(image, tile_size)
-
-    # This is the full resolution level zero.
-    levels = [tiles]
-
-    # Create the high levels by combining tiles. With each higher level four
-    # tiles from the lower level combine into one tile at the higher level.
-    # All the tiles are the same size in pixels, so the four tiles are combined
-    # and then sized down by half.
-    #
-    # We keep creating new levels by combining tiles until we create a level
-    # that on has a single tile. This is the root level.
-
-    # Keep going as long as the last level we created as more than one tile.
-    while not _one_tile(levels[-1]):
-        with block_timer(
-            f"Create coarser level {len(levels)}:", print_time=True
-        ):
-            next_level = _create_coarser_level(levels[-1])
-        levels.append(next_level)
-
-    return levels
-
-
 def create_multi_scale_from_image(
     image: np.ndarray, tile_size: int
 ) -> List[np.ndarray]:
@@ -270,7 +234,7 @@ def create_multi_scale_from_image(
 
 
 def create_levels_from_multiscale_data(
-    data: List[ArrayLike], image_config: ImageConfig
+    data: List[ArrayLike], tile_size: int, delay_ms: NormalNoise
 ):
     """Create octree levels from multiscale data.
 
@@ -283,4 +247,6 @@ def create_levels_from_multiscale_data(
     until we upgrade it.
     """
 
-    return [create_tiles(level_data, image_config) for level_data in data]
+    return [
+        create_tiles(level_data, tile_size, delay_ms) for level_data in data
+    ]
