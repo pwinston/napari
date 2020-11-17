@@ -82,9 +82,12 @@ class QtOctreeInfoLayout(QVBoxLayout):
         # Toggle debug grid drawn around tiles.
         self._create_checkbox("Show Grid", layer.show_grid, on_set_grid)
 
-        # AUTO means napari selects the appropriate octree level
-        # dynamically as you zoom in or out.
         num_levels = layer.num_octree_levels
+
+        # Show AUTO followed by the valid layer numbers we can choose. AUTO
+        # means OctreeImage selects the appropriate octree level
+        # dynamically as you zoom in or out. Which is the normal behavior
+        # the user almost always wants.
         level_options = {"AUTO": -1}
         level_options.update({str(x): x for x in np.arange(0, num_levels)})
 
