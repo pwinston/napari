@@ -289,7 +289,7 @@ class LoaderCommands:
         src = async_config
         config = [
             ('log_path', src.log_path),
-            ('synchronous', src.synchronous),
+            ('force_synchronous', src.force_synchronous),
             ('num_workers', src.num_workers),
             ('use_processes', src.use_processes),
             ('auto_sync_ms', src.auto_sync_ms),
