@@ -33,7 +33,8 @@ class OctreeMultiscaleSlice:
 
         self._slice_config = slice_config
 
-        self._octree = Octree(id(self), data, slice_config)
+        slice_id = id(self)
+        self._octree = Octree(slice_id, data, slice_config)
         self._octree_level = self._octree.num_levels - 1
 
         thumbnail_image = np.zeros(
