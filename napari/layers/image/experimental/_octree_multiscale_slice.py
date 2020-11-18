@@ -88,7 +88,6 @@ class OctreeMultiscaleSlice:
 
     def get_intersection(self, view: OctreeView):
         """Return this view's intersection with the octree."""
-        assert self._octree
         level = self._get_octree_level(view)
         return OctreeIntersection(level, view)
 
