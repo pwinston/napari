@@ -91,7 +91,7 @@ class OctreeIntersection:
         Parameters
         ----------
         span : Tuple[float, float]
-            The span in image coodinates.
+            The span in image coordinates.
         num_tiles_total : int
             The total number of tiles in this direction.
         """
