@@ -65,20 +65,20 @@ class OctreeIntersection:
         self.level = level
         self._corners = view.corners
 
-        info = self.level.info
+        level_info = self.level.info
 
         # TODO_OCTREE: don't split rows/cols so all these pairs of variables
         # are just one variable each? Use numpy more.
         rows, cols = view.corners[:, 0], view.corners[:, 1]
 
-        base = info.slice_config.base_shape
+        base = level_info.slice_config.base_shape
 
         self.normalized_range = np.array(
             [np.clip(rows / base[0], 0, 1), np.clip(cols / base[1], 0, 1)]
         )
 
-        scaled_rows = rows / info.scale
-        scaled_cols = cols / info.scale
+        scaled_rows = rows / level_info.scale
+        scaled_cols = cols / level_info.scale
 
         self._row_range = self.row_range(scaled_rows)
         self._col_range = self.column_range(scaled_cols)
