@@ -104,12 +104,33 @@ class OctreeIntersection:
         return range(*span_int)
 
     def row_range(self, span: Tuple[float, float]) -> range:
-        """Return row indices which span image coordinates [y0..y1]."""
+        """Return row range of tiles for this span.
+        Parameters
+        ----------
+        span : Tuple[float, float]
+            The span in image coordinates, [y0..y1]
+
+        Return
+        ------
+        range
+            The range of tiles across the columns.
+        """
         tile_rows = self.level.info.shape_in_tiles[0]
         return self.tile_range(span, tile_rows)
 
     def column_range(self, span: Tuple[float, float]) -> range:
-        """Return column indices which span image coordinates [x0..x1]."""
+        """Return column range of tiles for this span.
+
+        Parameters
+        ----------
+        span : Tuple[float, float]
+            The span in image coordinates, [x0..x1]
+
+        Return
+        ------
+        range
+            The range of tiles across the columns.
+        """
         tile_cols = self.level.info.shape_in_tiles[1]
         return self.tile_range(span, tile_cols)
 
