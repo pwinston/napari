@@ -161,7 +161,7 @@ class OctreeIntersection:
 
     @property
     def tile_state(self) -> dict:
-        """Return tile state.
+        """Return tile state, for the monitor.
 
         Return
         ------
@@ -182,7 +182,7 @@ class OctreeIntersection:
 
     @property
     def tile_config(self) -> dict:
-        """Return tile config
+        """Return tile config, for the monitor.
 
         Return
         ------
