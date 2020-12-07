@@ -1,6 +1,6 @@
 """OctreeChunkLoader class.
 
-Uses ChunkLoader to load OctreeChunk's in the octree.
+Uses ChunkLoader to load data into OctreeChunks in the octree.
 """
 import logging
 from typing import List, Set
@@ -12,7 +12,7 @@ LOGGER = logging.getLogger("napari.async.octree")
 
 
 class OctreeChunkLoader:
-    """Load data into the OctreeChunks in the octree.
+    """Load data into OctreeChunks in the octree.
 
     Parameters
     ----------
@@ -22,7 +22,7 @@ class OctreeChunkLoader:
     Attributes
     ----------
     _last_visible : Set[OctreeChunkKey]
-        Chunks we saw last frame, so we can recognize chunks have just
+        Chunks we saw last frame, so we can recognize chunks which have just
         come into view.
     """
 
@@ -33,17 +33,17 @@ class OctreeChunkLoader:
     def get_drawable_chunks(
         self, visible: List[OctreeChunk], layer_key: LayerKey
     ) -> List[OctreeChunk]:
-        """Return the chunks that can be drawn, of the visible chunks.
+        """Return the chunks that can be drawn, of the visible ones.
 
         Visible chunks are within the bounds of the OctreeView, but those
         chunks may or may not be drawable. Drawable chunks are typically
-        ones that were fully in memory to start, or have been loaded
-        so the data is now in memory.
+        ones that were fully in memory to start, or have been
+        asynchronously loaded so their data is now in memory.
 
         Parameters
         ----------
         visible : List[OctreeChunk]
-            The chunks which are visible to the camera.
+            The chunks which are visible to the current view.
         layer_key : LayerKey
             The layer we loading chunks into.
 
@@ -53,7 +53,7 @@ class OctreeChunkLoader:
             The chunks that can be drawn.
         """
         # How many visible chunks are we dealing with.
-        count = len(visible)
+        num_visible = len(visible)
 
         # Create a set for fast access.
         visible_set = set(octree_chunk.key for octree_chunk in visible)
@@ -65,12 +65,16 @@ class OctreeChunkLoader:
                 self._last_visible.remove(key)
 
         def _log(i, label, chunk):
+            """Probably a temporary log helper function."""
             LOGGER.debug(
-                "Visible Chunk: %d of %d -> %s: %s", i, count, label, chunk
+                "Visible Chunk: %d of %d -> %s: %s",
+                i,
+                num_visible,
+                label,
+                chunk,
             )
 
         drawable = []  # TODO_OCTREE combine list/set
-        visible_set = set()
         for i, octree_chunk in enumerate(visible):
 
             if not chunk_loader.cache.enabled:
@@ -84,7 +88,6 @@ class OctreeChunkLoader:
                 # The chunk is fully in memory, we can view it right away.
                 # _log(i, "ALREADY LOADED", octree_chunk)
                 drawable.append(octree_chunk)
-                visible_set.add(octree_chunk.key)
             elif octree_chunk.loading:
                 # The chunk is being loaded, do not view it yet.
                 _log(i, "LOADING:", octree_chunk)
@@ -97,7 +100,6 @@ class OctreeChunkLoader:
                     # cache, or it's fast-loading data. We can draw it now.
                     _log(i, "SYNC LOAD", octree_chunk)
                     drawable.append(octree_chunk)
-                    visible_set.add(octree_chunk.key)
                 else:
                     # An async load was initiated, sometime later our
                     # self._on_chunk_loaded method will be called.
