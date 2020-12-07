@@ -57,13 +57,13 @@ class OctreeIntersection:
     ----------
     level : OctreeLevel
         The octree level that we intersected with.
-    corners_2d : np.ndarray
-        The lower left and upper right corners of the view in data coordinates.
+    view : OctreeView
+        The view we are intersecting with the octree.
     """
 
     def __init__(self, level: OctreeLevel, view: OctreeView):
         self.level = level
-        self.corners = view.corners
+        self._corners = view.corners
 
         info = self.level.info
 
@@ -83,8 +83,18 @@ class OctreeIntersection:
         self._row_range = self.row_range(scaled_rows)
         self._col_range = self.column_range(scaled_cols)
 
-    def tile_range(self, span, num_tiles):
-        """Return tiles indices needed to draw the span."""
+    def tile_range(
+        self, span: Tuple[float, float], num_tiles_total: int
+    ) -> range:
+        """Return tiles indices needed to draw the span.
+
+        Parameters
+        ----------
+        span : Tuple[float, float]
+            The span in image coodinates.
+        num_tiles_total : int
+            The total number of tiles in this direction.
+        """
 
         def _clamp(val, min_val, max_val):
             return max(min(val, max_val), min_val)
@@ -93,8 +103,8 @@ class OctreeIntersection:
 
         span_tiles = [span[0] / tile_size, span[1] / tile_size]
         clamped = [
-            _clamp(span_tiles[0], 0, num_tiles - 1),
-            _clamp(span_tiles[1], 0, num_tiles - 1) + 1,
+            _clamp(span_tiles[0], 0, num_tiles_total - 1),
+            _clamp(span_tiles[1], 0, num_tiles_total - 1) + 1,
         ]
 
         # TODO_OCTREE: BUG, range is not empty when it should be?
@@ -197,7 +207,7 @@ class OctreeIntersection:
                 # A list of (row, col) pairs of visible tiles.
                 "seen": seen,
                 # The two corners of the view in data coordinates ((x0, y0), (x1, y1)).
-                "corners": self.corners,
+                "corners": self._corners,
             }
         }
 
