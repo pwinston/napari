@@ -276,7 +276,7 @@ class OctreeImage(Image):
         # or may not be drawable.
         visible_chunks = self._slice.get_visible_chunks(self._view)
 
-        # Calling _slice.drawable_chunks() will select the appropriate
+        # Calling _slice.visible_chunks() above will select the appropriate
         # octree level for the view. If the level changed, then update our
         # data_level to match. This assignment will do nothing if the level
         # didn't change.
