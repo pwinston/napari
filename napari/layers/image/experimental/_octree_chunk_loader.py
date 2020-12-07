@@ -52,10 +52,7 @@ class OctreeChunkLoader:
         List[OctreeChunk]
             The chunks that can be drawn.
         """
-        # How many visible chunks are we dealing with.
-        num_visible = len(visible)
-
-        # Create a set for fast access.
+        # Create a set for fast membership testing.
         visible_set = set(octree_chunk.key for octree_chunk in visible)
 
         # Remove chunks from self._last_visible if they are no longer
@@ -64,46 +61,12 @@ class OctreeChunkLoader:
             if key not in visible_set:
                 self._last_visible.remove(key)
 
-        def _log(i, label, chunk):
-            """Probably a temporary log helper function."""
-            LOGGER.debug(
-                "Visible Chunk: %d of %d -> %s: %s",
-                i,
-                num_visible,
-                label,
-                chunk,
-            )
+        drawable = []  # Create this list of drawable chunks.
 
-        drawable = []  # TODO_OCTREE combine list/set
+        # Iterate through every visible chunk taking actions.
         for i, octree_chunk in enumerate(visible):
-
-            if not chunk_loader.cache.enabled:
-                new_in_view = octree_chunk.key not in self._last_visible
-                if new_in_view and octree_chunk.in_memory:
-                    # Not using cache, so if this chunk just came into view
-                    # clear it out, so it gets reloaded.
-                    octree_chunk.clear()
-
-            if octree_chunk.in_memory:
-                # The chunk is fully in memory, we can view it right away.
-                # _log(i, "ALREADY LOADED", octree_chunk)
+            if self._prepare_to_draw(octree_chunk, layer_key):
                 drawable.append(octree_chunk)
-            elif octree_chunk.loading:
-                # The chunk is being loaded, do not view it yet.
-                _log(i, "LOADING:", octree_chunk)
-            else:
-                # The chunk is not in memory and is not being loaded, so
-                # we are going to load it.
-                sync_load = self._load_chunk(octree_chunk, layer_key)
-                if sync_load:
-                    # The chunk was loaded synchronously. Either it hit the
-                    # cache, or it's fast-loading data. We can draw it now.
-                    _log(i, "SYNC LOAD", octree_chunk)
-                    drawable.append(octree_chunk)
-                else:
-                    # An async load was initiated, sometime later our
-                    # self._on_chunk_loaded method will be called.
-                    _log(i, "ASYNC LOAD", octree_chunk)
 
         # Update our _last_visible set with what is in view.
         for octree_chunk in drawable:
@@ -158,3 +121,49 @@ class OctreeChunkLoader:
         # we will draw it this frame.
         octree_chunk.data = satisfied_request.chunks.get('data')
         return True
+
+    def _prepare_to_draw(
+        self, octree_chunk: OctreeChunk, layer_key: LayerKey
+    ) -> bool:
+        """Return True if this chunk is ready to be drawn.
+
+        Parameters
+        ----------
+        octree_chunk : OctreeChunk
+            Prepare to draw this chunk.
+
+        Return
+        ------
+        bool
+            True if this chunk can be drawn.
+        """
+        # If the cache is disabled, and this chunk just came into view,
+        # the we nuke the contents. This forces a re-load of the data.
+        #
+        # In the future we might strip every chunk that goes out of
+        # view. Then this will not be needed.
+        if not chunk_loader.cache.enabled:
+            new_in_view = octree_chunk.key not in self._last_visible
+            if new_in_view and octree_chunk.in_memory:
+                octree_chunk.clear()
+
+        # If the chunk is fully in memory, then it's drawable.
+        if octree_chunk.in_memory:
+            return True
+
+        # If the chunk is loading, it's not drawable yet.
+        if octree_chunk.loading:
+            return False
+
+        # The chunk is not in memory and is not being loaded, but it is
+        # in view. So try loading it.
+        sync_load = self._load_chunk(octree_chunk, layer_key)
+
+        # If the chunk was loaded synchronously, we can draw it now.
+        if sync_load:
+            return True
+
+        # Otherwise, an async load as initiated, and sometime later
+        # OctreeImage.on_chunk_loaded will be called with the chunk's
+        # loaded data. But we can't draw it now.
+        return False
