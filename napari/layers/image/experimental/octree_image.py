@@ -287,8 +287,8 @@ class OctreeImage(Image):
         layer_key = LayerKey.from_layer(self, indices)
 
         # Calling get_drawable_chunks() will return the chunks that are
-        # ready to be draw. Also, it might initiate async loads as
-        # appropriate, so more chunks will be drawable in the near future.
+        # ready to be drawn. Also, it might initiate async loads so that
+        # more chunks will be drawable in the near future.
         return self._loader.get_drawable_chunks(visible_chunks, layer_key)
 
     def _update_draw(

@@ -33,12 +33,51 @@ class OctreeChunkLoader:
     def get_drawable_chunks(
         self, visible: List[OctreeChunk], layer_key: LayerKey
     ) -> List[OctreeChunk]:
-        """Return the chunks that can be drawn, of the visible ones.
+        """Return the chunks that should be drawn.
 
         Visible chunks are within the bounds of the OctreeView, but those
         chunks may or may not be drawable. Drawable chunks are typically
         ones that were fully in memory to start, or have been
         asynchronously loaded so their data is now in memory.
+
+        This routine might return drawable chunks for levels other than
+        the target level we are drawing. This is called multi-level rendering
+        and it's core feature of quadtree/octree rendering.
+
+        Background
+        -----------
+        Generally we want to draw the "best available" data. The target
+        level was chosen because its image pixels best match the screen
+        pixels. So if available we always prefer to draw chunks at the
+        target level.
+
+        However we strongly want to avoid drawing nothing. So if a chunk is
+        not available in the target level, we search of a suitable substitute.
+        There are just two directions to search:
+
+        1) Look for a drawable chunk at a higher (coarser) level.
+        2) Look for a drawable chunk at a lower (finer) level.
+
+        A parent chunk, at a higher level, will cover more than just the
+        missing target level chunk. While a child chunk, at a lower level,
+        will only cover a fraction of the missing target level chunk.
+
+        The TiledImageVisual can draw overlapping tiles/chunks. For example
+        suppose below B and C are in the target level. But in this case
+        B is drawable but C is not. We search up from C and find A.
+        ----------
+        |    A   |
+        | --- ---|
+        |  B | C |
+        |---------
+        We return B and A as drawable chunks. TiledImageVisual will render
+        A first and then B. So looking at the region coverede by A, the 1/4
+        occupied by B will be at the target resolution, the remaining 3/4
+        will be at a a lower resoution.
+
+        In many cases drawing one level lower resolution than the target will
+        be barely noticeable by the user. And once the chunk is loaded it
+        will update to full resolution.
 
         Parameters
         ----------
