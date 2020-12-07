@@ -128,7 +128,7 @@ class OctreeIntersection:
         return _inside(row, self._row_range) and _inside(col, self._col_range)
 
     def get_chunks(self, create_chunks=False) -> List[OctreeChunk]:
-        """Return chunks inside this intersection.
+        """Return all of the chunks in this intersection.
 
         Parameters
         ----------
@@ -136,7 +136,7 @@ class OctreeIntersection:
             If True, create an OctreeChunk at any location that does
             not already have a chunk.
         """
-        chunks = []
+        chunks = []  # The chunks in the intersection.
 
         # Get every chunk that is within the rectangular region. These are
         # all the chunks we might possibly draw, because they are within
@@ -148,7 +148,7 @@ class OctreeIntersection:
         #
         # OctreeChunks can be loaded or unloaded. Unloaded chunks are not
         # drawn until their data as been loaded in. But here we return
-        # every chunk within the rectangle.
+        # every chunk within the view.
         for row in self._row_range:
             for col in self._col_range:
                 chunk = self.level.get_chunk(
